@@ -18,6 +18,16 @@ class GameDifficulty(Choice):
     option_hard = 3
     option_extreme = 4
     default = 2
+    
+class NumberOfMissions(Range):
+    """
+    Number of missions.
+    """
+
+    display_name = "Number of missions"
+    range_start = 1
+    range_end = 10
+    default = 4
 
 
 class ScoreForLastCheck(Range):
@@ -43,23 +53,6 @@ class ScoreForGoal(Range):
     range_start = 500
     range_end = 1000
     default = 777
-
-
-class MinimalNumberOfDiceAndRolls(Choice):
-    """
-    The minimal number of dice and rolls in the pool.
-    These are guaranteed, unlike the later items.
-    You can never get more than 8 dice and 5 rolls.
-    You start with one dice and one roll.
-    """
-
-    display_name = "Minimal number of dice and rolls in pool"
-    option_5_dice_and_3_rolls = 2
-    option_5_dice_and_5_rolls = 3
-    option_6_dice_and_4_rolls = 4
-    option_7_dice_and_3_rolls = 5
-    option_8_dice_and_2_rolls = 6
-    default = 2
 
 
 class NumberDiceFragmentsPerDice(Range):
@@ -88,21 +81,6 @@ class NumberRollFragmentsPerRoll(Range):
     range_start = 1
     range_end = 5
     default = 4
-
-
-class AlternativeCategories(Range):
-    """
-    There are 16 default categories, but there are also 16 alternative categories.
-    These alternative categories can be randomly selected to replace the default categories.
-    They are a little strange, but can give a fun new experience.
-    In the game, you can hover over categories to check what they do.
-    How many alternative categories would you like to see in your game?
-    """
-
-    display_name = "Number of alternative categories"
-    range_start = 0
-    range_end = 16
-    default = 0
 
 
 class ChanceOfDice(Range):
@@ -278,14 +256,13 @@ class AllowManual(Choice):
 @dataclass
 class YachtDiceOptions(PerGameCommonOptions):
     game_difficulty: GameDifficulty
+    number_of_missions: NumberOfMissions
     score_for_last_check: ScoreForLastCheck
     score_for_goal: ScoreForGoal
 
-    minimal_number_of_dice_and_rolls: MinimalNumberOfDiceAndRolls
     number_of_dice_fragments_per_dice: NumberDiceFragmentsPerDice
     number_of_roll_fragments_per_roll: NumberRollFragmentsPerRoll
 
-    alternative_categories: AlternativeCategories
 
     allow_manual_input: AllowManual
 

@@ -11,8 +11,6 @@ from .Options import (
     AddExtraPoints,
     AddStoryChapters,
     GameDifficulty,
-    MinimalNumberOfDiceAndRolls,
-    MinimizeExtraItems,
     PointsSize,
     YachtDiceOptions,
     yd_option_groups,
@@ -74,27 +72,6 @@ class YachtDiceWorld(World):
         self.itempool = []
         self.precollected = []
 
-        # number of dice and rolls in the pull
-        opt_dice_and_rolls = self.options.minimal_number_of_dice_and_rolls
-
-        if opt_dice_and_rolls == MinimalNumberOfDiceAndRolls.option_5_dice_and_3_rolls:
-            num_of_dice = 5
-            num_of_rolls = 3
-        elif opt_dice_and_rolls == MinimalNumberOfDiceAndRolls.option_5_dice_and_5_rolls:
-            num_of_dice = 5
-            num_of_rolls = 5
-        elif opt_dice_and_rolls == MinimalNumberOfDiceAndRolls.option_6_dice_and_4_rolls:
-            num_of_dice = 6
-            num_of_rolls = 4
-        elif opt_dice_and_rolls == MinimalNumberOfDiceAndRolls.option_7_dice_and_3_rolls:
-            num_of_dice = 7
-            num_of_rolls = 3
-        elif opt_dice_and_rolls == MinimalNumberOfDiceAndRolls.option_8_dice_and_2_rolls:
-            num_of_dice = 8
-            num_of_rolls = 2
-        else:
-            raise Exception(f"[Yacht Dice] Unknown MinimalNumberOfDiceAndRolls options {opt_dice_and_rolls}")
-
         # amount of dice and roll fragments needed to get a dice or roll
         self.frags_per_dice = self.options.number_of_dice_fragments_per_dice.value
         self.frags_per_roll = self.options.number_of_roll_fragments_per_roll.value
@@ -111,13 +88,8 @@ class YachtDiceWorld(World):
             self.difficulty = 4
         else:
             raise Exception(f"[Yacht Dice] Unknown GameDifficulty options {diff_value}")
-
-        # Create a list with the specified number of 1s
-        num_ones = self.options.alternative_categories.value
-        categorylist = [1] * num_ones + [0] * (16 - num_ones)
-
-        # Shuffle the list to randomize the order
-        self.random.shuffle(categorylist)
+        
+        self.number_of_missions = self.options.number_of_missions
 
         # A list of all possible categories.
         # Every entry in the list has two categories, one 'default' category and one 'alt'.
@@ -140,49 +112,18 @@ class YachtDiceWorld(World):
             ["Category Full House", "Category Five Distinct Dice"],
             ["Category Yacht", "Category 4&5 Full House"],
         ]
-
+        
         # categories used in this game.
-        possible_categories = []
-
-        for index, cats in enumerate(all_categories):
-            possible_categories.append(cats[categorylist[index]])
-
-            # Add Choice and Inverse choice (or their alts) to the precollected list.
-            if index == 0 or index == 1:
-                self.precollected.append(cats[categorylist[index]])
-            else:
-                self.itempool.append(cats[categorylist[index]])
+        possible_categories = [i for [i,_] in all_categories]
 
         # Also start with one Roll and one Dice
-        self.precollected.append("Roll")
-        self.precollected.append("Dice")
-
-        # if one fragment per dice, just add "Dice" objects
-        if self.frags_per_dice == 1:
-            self.itempool += ["Dice"] * (num_of_dice - 1)  # minus one because one is in start inventory
-        else:
-            self.itempool.append("Dice")  # always add a full dice to make generation easier (will be early)
-            self.itempool += ["Dice Fragment"] * (self.frags_per_dice * (num_of_dice - 2))
-
-        # if one fragment per roll, just add "Roll" objects
-        if self.frags_per_roll == 1:
-            self.itempool += ["Roll"] * (num_of_rolls - 1)  # minus one because one is in start inventory
-        else:
-            self.itempool.append("Roll")  # always add a full roll to make generation easier (will be early)
-            self.itempool += ["Roll Fragment"] * (self.frags_per_roll * (num_of_rolls - 2))
-
-        already_items = len(self.itempool)
-
-        # Yacht Dice needs extra filler items so it doesn't get stuck in generation.
-        # For now, we calculate the number of extra items we'll need later.
-        if self.options.minimize_extra_items == MinimizeExtraItems.option_yes_please:
-            extra_percentage = max(0.1, 0.8 - self.multiworld.players / 10)
-        elif self.options.minimize_extra_items == MinimizeExtraItems.option_no_dont:
-            extra_percentage = 0.7
-        else:
-            raise Exception(f"[Yacht Dice] Unknown MinimizeExtraItems options {self.options.minimize_extra_items}")
-        extra_locations_needed = max(10, math.ceil(already_items * extra_percentage))
-
+        self.precollected += ["Roll", "Dice", "Category Choice", "Category Inverse Choice"]
+        
+        self.itempool += ["Roll", "Dice"]
+        self.itempool += ["Dice Fragment"] * self.frags_per_dice if self.frags_per_dice > 1 else ["Dice"]
+        self.itempool += ["Roll Fragment"] * self.frags_per_roll if self.frags_per_roll > 1 else ["Roll"]
+        self.itempool += possible_categories
+        
         # max score is the value of the last check. Goal score is the score needed to 'finish' the game
         self.max_score = self.options.score_for_last_check.value
         self.goal_score = min(self.max_score, self.options.score_for_goal.value)
@@ -199,12 +140,6 @@ class YachtDiceWorld(World):
             "Points": self.options.weight_of_points.value,
         }
 
-        # if the player wants extra rolls or dice, fill the pool with fragments until close to an extra roll/dice
-        if weights["Dice"] > 0 and self.frags_per_dice > 1:
-            self.itempool += ["Dice Fragment"] * (self.frags_per_dice - 1)
-        if weights["Roll"] > 0 and self.frags_per_roll > 1:
-            self.itempool += ["Roll Fragment"] * (self.frags_per_roll - 1)
-
         # calibrate the weights, since the impact of each of the items is different
         weights["Dice"] = weights["Dice"] / 5 * self.frags_per_dice
         weights["Roll"] = weights["Roll"] / 5 * self.frags_per_roll
@@ -215,23 +150,6 @@ class YachtDiceWorld(World):
 
         def get_item_to_add(weights, extra_points_added, multipliers_added, items_added):
             items_added += 1
-
-            all_items = self.itempool + self.precollected
-            dice_fragments_in_pool = all_items.count("Dice") * self.frags_per_dice + all_items.count("Dice Fragment")
-            if dice_fragments_in_pool + 1 >= 9 * self.frags_per_dice:
-                weights["Dice"] = 0  # don't allow >=9 dice
-            roll_fragments_in_pool = all_items.count("Roll") * self.frags_per_roll + all_items.count("Roll Fragment")
-            if roll_fragments_in_pool + 1 >= 6 * self.frags_per_roll:
-                weights["Roll"] = 0  # don't allow >= 6 rolls
-
-            # Don't allow too many multipliers
-            if multipliers_added > 50:
-                weights["Fixed Score Multiplier"] = 0
-                weights["Step Score Multiplier"] = 0
-
-            # Don't allow too many extra points
-            if extra_points_added > 300:
-                weights["Points"] = 0
 
             # if all weights are zero, allow to add fixed score multiplier, double category, points.
             if sum(weights.values()) == 0:
@@ -245,10 +163,8 @@ class YachtDiceWorld(World):
             which_item_to_add = self.random.choices(list(weights.keys()), weights=list(weights.values()))[0]
 
             if which_item_to_add == "Dice":
-                weights["Dice"] /= 1 + self.frags_per_dice
                 return "Dice" if self.frags_per_dice == 1 else "Dice Fragment"
             elif which_item_to_add == "Roll":
-                weights["Roll"] /= 1 + self.frags_per_roll
                 return "Roll" if self.frags_per_roll == 1 else "Roll Fragment"
             elif which_item_to_add == "Fixed Score Multiplier":
                 weights["Fixed Score Multiplier"] /= 1.05
@@ -262,9 +178,8 @@ class YachtDiceWorld(World):
                 # Below entries are the weights to add each category.
                 # Prefer to add choice or number categories, because the other categories are too "all or nothing",
                 # which often don't give any points, until you get overpowered, and then they give all points.
-                cat_weights = [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1]
                 weights["Double category"] /= 1.1
-                return self.random.choices(possible_categories, weights=cat_weights)[0]
+                return self.random.choices(possible_categories)[0]
             elif which_item_to_add == "Points":
                 score_dist = self.options.points_size
                 probs = {"1 Point": 1, "10 Points": 0, "100 Points": 0}
@@ -305,9 +220,9 @@ class YachtDiceWorld(World):
         )
 
         # if we overshoot, remove items until you get below 1000, then return the last removed item
-        if score_in_logic > 1000:
+        if min(score_in_logic) > 1000:
             removed_item = ""
-            while score_in_logic > 1000:
+            while min(score_in_logic) > 1000:
                 removed_item = self.itempool.pop()
                 score_in_logic = dice_simulation_fill_pool(
                     self.itempool + self.precollected,
@@ -319,15 +234,16 @@ class YachtDiceWorld(World):
             self.itempool.append(removed_item)
         else:
             # Keep adding items until a score of 1000 is in logic
-            while score_in_logic < 1000:
+            while min(score_in_logic) < 1000:
+                print(score_in_logic)
                 item_to_add = get_item_to_add(weights, extra_points_added, multipliers_added, items_added)
                 self.itempool.append(item_to_add)
                 if item_to_add == "1 Point":
-                    score_in_logic += 1
+                    score_in_logic = [s + 1 for s in score_in_logic]
                 elif item_to_add == "10 Points":
-                    score_in_logic += 10
+                    score_in_logic = [s + 10 for s in score_in_logic]
                 elif item_to_add == "100 Points":
-                    score_in_logic += 100
+                    score_in_logic = [s + 100 for s in score_in_logic]
                 else:
                     score_in_logic = dice_simulation_fill_pool(
                         self.itempool + self.precollected,
@@ -341,8 +257,10 @@ class YachtDiceWorld(World):
         already_items = len(self.itempool) + 1  # +1 because of Victory item
 
         # We need to add more filler/useful items if there are many items in the pool to guarantee successful generation
-        extra_locations_needed += (already_items - 45) // 15
+        extra_locations_needed = (already_items - 45) // 15 + 50
         self.number_of_locations = already_items + extra_locations_needed
+        
+        self.number_of_locations = ((self.number_of_locations + (self.number_of_missions-1)) // self.number_of_missions) * self.number_of_missions  # make multiple of # missions
 
         # From here, we will count the number of items in the self.itempool, and add useful/filler items to the pool,
         # making sure not to exceed the number of locations.
@@ -415,7 +333,7 @@ class YachtDiceWorld(World):
 
     def create_regions(self):
         # call the ini_locations function, that generates locations based on the inputs.
-        location_table = ini_locations(self.goal_score, self.max_score, self.number_of_locations, self.difficulty)
+        location_table = ini_locations(self.goal_score, self.max_score, self.number_of_locations, self.number_of_missions, self.difficulty)
 
         # simple menu-board construction
         menu = Region("Menu", self.player, self.multiworld)
@@ -423,14 +341,14 @@ class YachtDiceWorld(World):
 
         # add locations to board, one for every location in the location_table
         board.locations = [
-            YachtDiceLocation(self.player, loc_name, loc_data.score, loc_data.id, board)
+            YachtDiceLocation(self.player, loc_name, loc_data.score, loc_data.mission, loc_data.id, board)
             for loc_name, loc_data in location_table.items()
             if loc_data.region == board.name
         ]
 
         # Add the victory item to the correct location.
         # The website declares that the game is complete when the victory item is obtained.
-        victory_location_name = f"{self.goal_score} score"
+        victory_location_name = f"Mission {self.number_of_missions}, {self.goal_score} score"
         self.get_location(victory_location_name).place_locked_item(self.create_item("Victory"))
 
         # add the regions

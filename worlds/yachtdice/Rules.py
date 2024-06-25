@@ -60,7 +60,7 @@ class Category:
 
     # return mean score of a category
     def mean_score(self, num_dice, num_rolls):
-        if num_dice == 0 or num_rolls == 0:
+        if num_dice <= 0 or num_rolls <= 0:
             return 0
         mean_score = 0
         for key, value in yacht_weights[self.name, min(8, num_dice), min(8, num_rolls)].items():
@@ -193,7 +193,7 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
     # calculate total distribution
     total_dist = {0: 1}
     for j, category in enumerate(categories):
-        if num_dice == 0 or num_rolls == 0:
+        if num_dice <= 0 or num_rolls <= 0:
             dist = {0: 100000}
         else:
             dist = yacht_weights[category.name, min(8, num_dice), min(8, num_rolls)].copy()
@@ -212,7 +212,7 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
 
     # save result into the cache, then return it
     outcome = sum([percentile_distribution(total_dist, perc) for perc in perc_return]) / len(perc_return)
-    yachtdice_cache[player][tup] = max(5, math.floor(outcome))  # at least 5.
+    yachtdice_cache[player][tup] = math.floor(outcome)
 
     # cache management; we rarely/never need more than 400 entries. But if for some reason it became large,
     # delete the first entry of the player cache.
@@ -233,7 +233,10 @@ def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, difficulty,
         state, "state_is_a_list", frags_per_dice, frags_per_roll
     )
     return (
-        dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player) + expoints
+        [
+            dice_simulation_strings(categories, num_dice - mission, num_rolls - mission, fixed_mult, step_mult, difficulty, player) + expoints
+            for mission in range(4)
+        ]
     )
 
 
@@ -248,25 +251,27 @@ def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, 
         categories, num_dice, num_rolls, fixed_mult, step_mult, expoints = extract_progression(
             state, player, frags_per_dice, frags_per_roll
         )
-        state.prog_items[player]["maximum_achievable_score"] = (
-            dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player)
-            + expoints
-        )
-
+        state.prog_items[player]["maximum_achievable_score"] = [
+            (
+                dice_simulation_strings(categories, num_dice - mission, num_rolls - mission, fixed_mult, step_mult, difficulty, player)
+                + expoints
+            )
+            for mission in range(4)
+        ]
     return state.prog_items[player]["maximum_achievable_score"]
 
 
 def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, difficulty):
     """
-    Sets rules on entrances and advancements that are always applied
+    Sets rules on reaching scores
     """
-
     for location in world.get_locations(player):
+        print(f"{location.yacht_dice_score} {location.mission_number}")
         set_rule(
             location,
-            lambda state, curscore=location.yacht_dice_score, player=player: dice_simulation_state_change(
+            lambda state, curscore=location.yacht_dice_score, mission=location.mission_number, player=player: dice_simulation_state_change(
                 state, player, frags_per_dice, frags_per_roll, difficulty
-            )
+            )[mission-1]
             >= curscore,
         )
 

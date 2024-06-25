@@ -6,33 +6,43 @@ from BaseClasses import Location
 class LocData(typing.NamedTuple):
     id: int
     region: str
+    mission: int
     score: int
 
 
 class YachtDiceLocation(Location):
     game: str = "Yacht Dice"
 
-    def __init__(self, player: int, name: str, score: int, address: typing.Optional[int], parent):
+    def __init__(self, player: int, name: str, score: int, mission: int, address: typing.Optional[int], parent):
         super().__init__(player, name, address, parent)
         self.yacht_dice_score = score
+        self.mission_number = mission
 
 
 all_locations = {}
 starting_index = 16871244500  # 500 more than the starting index for items (not necessary, but this is what it is now)
 
 
-def all_locations_fun(max_score):
+def all_locations_fun(max_score, num_missions):
     """
     Function that is called when this file is loaded, which loads in ALL possible locations, score 1 to 1000
     """
-    return {f"{i} score": LocData(starting_index + i, "Board", i) for i in range(1, max_score + 1)}
+    
+    return {
+        f"Mission {mission+1}, {score} score": 
+            LocData(starting_index + mission * 10000000 + score, "Board", mission + 1, score)
+        for mission in range(num_missions)
+        for score in range(1, max_score + 1)
+    }
 
 
-def ini_locations(goal_score, max_score, number_of_locations, dif):
+def ini_locations(goal_score, max_score, number_of_locations, num_missions, dif):
     """
     function that loads in all locations necessary for the game, so based on options.
     will make sure that goal_score and max_score are included locations
     """
+    number_of_locs_per_mission = number_of_locations // num_missions
+    
     scaling = 2  # parameter that determines how many low-score location there are.
     # need more low-score locations or lower difficulties:
     if dif == 1:
@@ -47,8 +57,8 @@ def ini_locations(goal_score, max_score, number_of_locations, dif):
     # and the next score will always be at least highest_score + 1
     # note that current_score is at most max_score-1
     highest_score = 0
-    for i in range(number_of_locations - 1):
-        percentage = i / number_of_locations
+    for i in range(number_of_locs_per_mission - 1):
+        percentage = i / number_of_locs_per_mission
         current_score = int(1 + (percentage**scaling) * (max_score - 2))
         if current_score <= highest_score:
             current_score = highest_score + 1
@@ -63,10 +73,14 @@ def ini_locations(goal_score, max_score, number_of_locations, dif):
 
     scores += [max_score]
 
-    location_table = {f"{score} score": LocData(starting_index + score, "Board", score) for score in scores}
+    location_table = {
+        f"Mission {mission+1}, {score} score": LocData(starting_index + mission * 10000000 + score, "Board", mission + 1, score) 
+        for mission in range(num_missions)
+        for score in scores
+    }
 
     return location_table
 
 
 # we need to run this function to initialize all scores from 1 to 1000, even though not all are used
-all_locations = all_locations_fun(1000)
+all_locations = all_locations_fun(1000, 4)
