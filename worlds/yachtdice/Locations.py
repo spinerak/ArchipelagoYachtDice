@@ -83,4 +83,4 @@ def ini_locations(goal_score, max_score, number_of_locations, num_missions, dif)
 
 
 # we need to run this function to initialize all scores from 1 to 1000, even though not all are used
-all_locations = all_locations_fun(1000, 4)
+all_locations = all_locations_fun(1000, 10)
