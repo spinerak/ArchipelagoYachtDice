@@ -224,7 +224,7 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
     return yachtdice_cache[player][tup]
 
 
-def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, difficulty, player):
+def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, difficulty, player, num_missions):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a list, during filling of item pool.
@@ -235,12 +235,12 @@ def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, difficulty,
     return (
         [
             dice_simulation_strings(categories, num_dice - mission, num_rolls - mission, fixed_mult, step_mult, difficulty, player) + expoints
-            for mission in range(4)
+            for mission in range(num_missions)
         ]
     )
 
 
-def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, difficulty):
+def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, difficulty, num_missions):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a AP state object, while doing access rules.
@@ -256,21 +256,24 @@ def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, 
                 dice_simulation_strings(categories, num_dice - mission, num_rolls - mission, fixed_mult, step_mult, difficulty, player)
                 + expoints
             )
-            for mission in range(4)
+            for mission in range(num_missions)
         ]
     return state.prog_items[player]["maximum_achievable_score"]
 
 
-def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, difficulty):
+def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, difficulty, num_missions):
     """
     Sets rules on reaching scores
     """
     for location in world.get_locations(player):
-        print(f"{location.yacht_dice_score} {location.mission_number}")
         set_rule(
             location,
-            lambda state, curscore=location.yacht_dice_score, mission=location.mission_number, player=player: dice_simulation_state_change(
-                state, player, frags_per_dice, frags_per_roll, difficulty
+            lambda state, 
+            curscore=location.yacht_dice_score, 
+            mission=location.mission_number, 
+            player=player: 
+            dice_simulation_state_change(
+                state, player, frags_per_dice, frags_per_roll, difficulty, num_missions
             )[mission-1]
             >= curscore,
         )

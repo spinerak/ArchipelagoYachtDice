@@ -54,7 +54,7 @@ class YachtDiceWorld(World):
 
     item_name_groups = item_groups
 
-    ap_world_version = "2.0.6"
+    ap_world_version = "3.0.0"
 
     def _get_yachtdice_data(self):
         return {
@@ -216,7 +216,7 @@ class YachtDiceWorld(World):
             self.itempool.append(get_item_to_add(weights, extra_points_added, multipliers_added, items_added))
 
         score_in_logic = dice_simulation_fill_pool(
-            self.itempool + self.precollected, self.frags_per_dice, self.frags_per_roll, self.difficulty, self.player
+            self.itempool + self.precollected, self.frags_per_dice, self.frags_per_roll, self.difficulty, self.player, self.number_of_missions
         )
 
         # if we overshoot, remove items until you get below 1000, then return the last removed item
@@ -230,6 +230,7 @@ class YachtDiceWorld(World):
                     self.frags_per_roll,
                     self.difficulty,
                     self.player,
+                    self.number_of_missions
                 )
             self.itempool.append(removed_item)
         else:
@@ -251,7 +252,9 @@ class YachtDiceWorld(World):
                         self.frags_per_roll,
                         self.difficulty,
                         self.player,
+                        self.number_of_missions
                     )
+            print(score_in_logic)
 
         # count the number of locations in the game.
         already_items = len(self.itempool) + 1  # +1 because of Victory item
@@ -361,7 +364,7 @@ class YachtDiceWorld(World):
         """
         set rules per location, and add the rule for beating the game
         """
-        set_yacht_rules(self.multiworld, self.player, self.frags_per_dice, self.frags_per_roll, self.difficulty)
+        set_yacht_rules(self.multiworld, self.player, self.frags_per_dice, self.frags_per_roll, self.difficulty, self.number_of_missions)
         set_yacht_completion_rules(self.multiworld, self.player)
 
     def fill_slot_data(self):
@@ -382,6 +385,7 @@ class YachtDiceWorld(World):
         slot_data["goal_score"] = self.goal_score
         slot_data["last_check_score"] = self.max_score
         slot_data["ap_world_version"] = self.ap_world_version
+        slot_data["number_of_missions"] = self.number_of_missions
         return slot_data
 
     def create_item(self, name: str) -> Item:
