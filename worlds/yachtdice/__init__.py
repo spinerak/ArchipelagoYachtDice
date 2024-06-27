@@ -89,7 +89,7 @@ class YachtDiceWorld(World):
         else:
             raise Exception(f"[Yacht Dice] Unknown GameDifficulty options {diff_value}")
         
-        self.number_of_missions = self.options.number_of_missions
+        self.number_of_missions = self.options.number_of_missions.value
 
         # A list of all possible categories.
         # Every entry in the list has two categories, one 'default' category and one 'alt'.
