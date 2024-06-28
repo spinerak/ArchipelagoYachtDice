@@ -188,7 +188,7 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
     return yachtdice_cache[player][tup]
 
 
-def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, player, num_missions):
+def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, player, num_missions, mission_dif_inc):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a list, during filling of item pool.
@@ -198,11 +198,11 @@ def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, categories_
         categories, num_dice, num_rolls, fixed_mult, step_mult, expoints = extract_progression(
             state, "state_is_a_list", frags_per_dice, frags_per_roll, categories_per_mission[mission]
         )
-        results.append(dice_simulation_strings(categories, num_dice - mission, num_rolls - mission, fixed_mult, step_mult, difficulty, player) + expoints)
+        results.append(dice_simulation_strings(categories, num_dice - mission_dif_inc * mission, num_rolls - mission_dif_inc * mission, fixed_mult, step_mult, difficulty, player) + expoints)
     return results
 
 
-def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, num_missions):
+def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, num_missions, mission_dif_inc):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a AP state object, while doing access rules.
@@ -217,14 +217,14 @@ def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, 
                 state, player, frags_per_dice, frags_per_roll, categories_per_mission[mission]
             )
             results.append(
-                dice_simulation_strings(categories, num_dice - mission, num_rolls - mission, fixed_mult, step_mult, difficulty, player)
+                dice_simulation_strings(categories, num_dice - mission_dif_inc * mission, num_rolls - mission_dif_inc * mission, fixed_mult, step_mult, difficulty, player)
                 + expoints
             )
         state.prog_items[player]["maximum_achievable_score"] = results
     return state.prog_items[player]["maximum_achievable_score"]
 
 
-def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, num_missions):
+def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, num_missions, mission_dif_inc):
     """
     Sets rules on reaching scores
     """
@@ -236,7 +236,7 @@ def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_ro
             mission=location.mission_number, 
             player=player: 
             dice_simulation_state_change(
-                state, player, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, num_missions
+                state, player, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, num_missions, mission_dif_inc
             )[mission-1]
             >= curscore,
         )

@@ -28,6 +28,16 @@ class NumberOfMissions(Range):
     range_start = 1
     range_end = 10
     default = 5
+    
+class MissionDifficultyIncrease(Range):
+    """
+    How much more difficult every mission is compared to the previous.
+    """
+    
+    display_name = "Mission difficulty increase"
+    range_start = 1
+    range_end = 5
+    default = 5
 
 
 class ScoreForLastCheck(Range):
@@ -257,6 +267,7 @@ class AllowManual(Choice):
 class YachtDiceOptions(PerGameCommonOptions):
     game_difficulty: GameDifficulty
     number_of_missions: NumberOfMissions
+    mission_difficulty_increase: MissionDifficultyIncrease
     score_for_last_check: ScoreForLastCheck
     score_for_goal: ScoreForGoal
 
