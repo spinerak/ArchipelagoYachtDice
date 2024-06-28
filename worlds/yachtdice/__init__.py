@@ -113,16 +113,22 @@ class YachtDiceWorld(World):
             ["Category Yacht", "Category 4&5 Full House"],
         ]
         
-        # categories used in this game.
-        possible_categories = [i for [i,_] in all_categories]
+        self.categories_per_mission = [[self.random.choice(C) for C in all_categories] for _ in range(self.number_of_missions)]
 
+        possible_categories = list(set([x for xs in self.categories_per_mission for x in xs]))      
         # Also start with one Roll and one Dice
-        self.precollected += ["Roll", "Dice", "Category Choice", "Category Inverse Choice"]
+        self.precollected += ["Roll", "Dice"]
+        # start with two starting categories
+        start_1 = self.categories_per_mission[0][0]
+        start_2 = self.categories_per_mission[0][1]
+        self.precollected += [start_1, start_2]
         
         self.itempool += ["Roll", "Dice"]
         self.itempool += ["Dice Fragment"] * self.frags_per_dice if self.frags_per_dice > 1 else ["Dice"]
         self.itempool += ["Roll Fragment"] * self.frags_per_roll if self.frags_per_roll > 1 else ["Roll"]
         self.itempool += possible_categories
+        self.itempool.remove(start_1)
+        self.itempool.remove(start_2)
         
         # max score is the value of the last check. Goal score is the score needed to 'finish' the game
         self.max_score = self.options.score_for_last_check.value
@@ -216,7 +222,7 @@ class YachtDiceWorld(World):
             self.itempool.append(get_item_to_add(weights, extra_points_added, multipliers_added, items_added))
 
         score_in_logic = dice_simulation_fill_pool(
-            self.itempool + self.precollected, self.frags_per_dice, self.frags_per_roll, self.difficulty, self.player, self.number_of_missions
+            self.itempool + self.precollected, self.frags_per_dice, self.frags_per_roll, self.categories_per_mission, self.difficulty, self.player, self.number_of_missions
         )
 
         # if we overshoot, remove items until you get below 1000, then return the last removed item
@@ -250,6 +256,7 @@ class YachtDiceWorld(World):
                         self.itempool + self.precollected,
                         self.frags_per_dice,
                         self.frags_per_roll,
+                        self.categories_per_mission,
                         self.difficulty,
                         self.player,
                         self.number_of_missions
@@ -364,7 +371,7 @@ class YachtDiceWorld(World):
         """
         set rules per location, and add the rule for beating the game
         """
-        set_yacht_rules(self.multiworld, self.player, self.frags_per_dice, self.frags_per_roll, self.difficulty, self.number_of_missions)
+        set_yacht_rules(self.multiworld, self.player, self.frags_per_dice, self.frags_per_roll, self.categories_per_mission, self.difficulty, self.number_of_missions)
         set_yacht_completion_rules(self.multiworld, self.player)
 
     def fill_slot_data(self):
@@ -386,6 +393,7 @@ class YachtDiceWorld(World):
         slot_data["last_check_score"] = self.max_score
         slot_data["ap_world_version"] = self.ap_world_version
         slot_data["number_of_missions"] = self.number_of_missions
+        slot_data["categories_per_mission"] = self.categories_per_mission
         return slot_data
 
     def create_item(self, name: str) -> Item:

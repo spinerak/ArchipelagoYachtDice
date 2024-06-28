@@ -6,7 +6,7 @@ from BaseClasses import MultiWorld
 
 from worlds.generic.Rules import set_rule
 
-from .YachtWeights import yacht_weights
+from .YachtWeights_original import yacht_weights
 
 # This module adds logic to the apworld.
 # In short, we ran a simulation for every possible combination of dice and rolls you can have, per category.
@@ -15,42 +15,6 @@ from .YachtWeights import yacht_weights
 # We calculate the distribution of the total score.
 # We then pick a correct percentile to reflect the correct score that should be in logic.
 # The score is logic is *much* lower than the actual maximum reachable score.
-
-# List of categories, and the name of the logic class associated with it
-category_mappings = {
-    "Category Ones": "Ones",
-    "Category Twos": "Twos",
-    "Category Threes": "Threes",
-    "Category Fours": "Fours",
-    "Category Fives": "Fives",
-    "Category Sixes": "Sixes",
-    "Category Choice": "Choice",
-    "Category Inverse Choice": "Choice",
-    "Category Pair": "Pair",
-    "Category Three of a Kind": "ThreeOfAKind",
-    "Category Four of a Kind": "FourOfAKind",
-    "Category Tiny Straight": "TinyStraight",
-    "Category Small Straight": "SmallStraight",
-    "Category Large Straight": "LargeStraight",
-    "Category Full House": "FullHouse",
-    "Category Yacht": "Yacht",
-    "Category Distincts": "Distincts",
-    "Category Two times Ones": "Twos",  # same weights as twos category
-    "Category Half of Sixes": "Threes",  # same weights as threes category
-    "Category Twos and Threes": "TwosAndThrees",
-    "Category Sum of Odds": "SumOfOdds",
-    "Category Sum of Evens": "SumOfEvens",
-    "Category Double Threes and Fours": "DoubleThreesAndFours",
-    "Category Quadruple Ones and Twos": "QuadrupleOnesAndTwos",
-    "Category Micro Straight": "MicroStraight",
-    "Category Three Odds": "ThreeOdds",
-    "Category 1-2-1 Consecutive": "OneTwoOneConsecutive",
-    "Category Three Distinct Dice": "ThreeDistinctDice",
-    "Category Two Pair": "TwoPair",
-    "Category 2-1-2 Consecutive": "TwoOneTwoConsecutive",
-    "Category Five Distinct Dice": "FiveDistinctDice",
-    "Category 4&5 Full House": "FourAndFiveFullHouse",
-}
 
 
 class Category:
@@ -77,7 +41,7 @@ class ListState:
         return self.item_counts[item]
 
 
-def extract_progression(state, player, frags_per_dice, frags_per_roll):
+def extract_progression(state, player, frags_per_dice, frags_per_roll, allowed_categories):
     """
     method to obtain a list of what items the player has.
     this includes categories, dice, rolls and score multiplier etc.
@@ -92,8 +56,8 @@ def extract_progression(state, player, frags_per_dice, frags_per_roll):
     number_of_step_mults = state.count("Step Score Multiplier", player)
 
     categories = [
-        Category(category_value, state.count(category_name, player))
-        for category_name, category_value in category_mappings.items()
+        Category(category_name, state.count(category_name, player))
+        for category_name in allowed_categories
         if state.count(category_name, player)  # want all categories that have count >= 1
     ]
 
@@ -224,23 +188,21 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
     return yachtdice_cache[player][tup]
 
 
-def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, difficulty, player, num_missions):
+def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, player, num_missions):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a list, during filling of item pool.
     """
-    categories, num_dice, num_rolls, fixed_mult, step_mult, expoints = extract_progression(
-        state, "state_is_a_list", frags_per_dice, frags_per_roll
-    )
-    return (
-        [
-            dice_simulation_strings(categories, num_dice - mission, num_rolls - mission, fixed_mult, step_mult, difficulty, player) + expoints
-            for mission in range(num_missions)
-        ]
-    )
+    results = [] 
+    for mission in range(num_missions):
+        categories, num_dice, num_rolls, fixed_mult, step_mult, expoints = extract_progression(
+            state, "state_is_a_list", frags_per_dice, frags_per_roll, categories_per_mission[mission]
+        )
+        results.append(dice_simulation_strings(categories, num_dice - mission, num_rolls - mission, fixed_mult, step_mult, difficulty, player) + expoints)
+    return results
 
 
-def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, difficulty, num_missions):
+def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, num_missions):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a AP state object, while doing access rules.
@@ -248,20 +210,21 @@ def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, 
 
     if state.prog_items[player]["state_is_fresh"] == 0:
         state.prog_items[player]["state_is_fresh"] = 1
-        categories, num_dice, num_rolls, fixed_mult, step_mult, expoints = extract_progression(
-            state, player, frags_per_dice, frags_per_roll
-        )
-        state.prog_items[player]["maximum_achievable_score"] = [
-            (
+        
+        results = []
+        for mission in range(num_missions):
+            categories, num_dice, num_rolls, fixed_mult, step_mult, expoints = extract_progression(
+                state, player, frags_per_dice, frags_per_roll, categories_per_mission[mission]
+            )
+            results.append(
                 dice_simulation_strings(categories, num_dice - mission, num_rolls - mission, fixed_mult, step_mult, difficulty, player)
                 + expoints
             )
-            for mission in range(num_missions)
-        ]
+        state.prog_items[player]["maximum_achievable_score"] = results
     return state.prog_items[player]["maximum_achievable_score"]
 
 
-def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, difficulty, num_missions):
+def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, num_missions):
     """
     Sets rules on reaching scores
     """
@@ -273,7 +236,7 @@ def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_ro
             mission=location.mission_number, 
             player=player: 
             dice_simulation_state_change(
-                state, player, frags_per_dice, frags_per_roll, difficulty, num_missions
+                state, player, frags_per_dice, frags_per_roll, categories_per_mission, difficulty, num_missions
             )[mission-1]
             >= curscore,
         )
