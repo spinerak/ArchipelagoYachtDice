@@ -180,10 +180,11 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
 
     # cache management; we rarely/never need more than 400 entries. But if for some reason it became large,
     # delete the first entry of the player cache.
-    if len(yachtdice_cache[player]) > 400:
-        # Remove the oldest item
-        oldest_tup = next(iter(yachtdice_cache[player]))
-        del yachtdice_cache[player][oldest_tup]
+    # if len(yachtdice_cache[player]) > 400:
+    #     # Remove the oldest item
+    #     oldest_tup = next(iter(yachtdice_cache[player]))
+    #     print("REMOVE CACHE")
+    #     del yachtdice_cache[player][oldest_tup]
 
     return yachtdice_cache[player][tup]
 

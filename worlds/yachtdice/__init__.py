@@ -69,6 +69,7 @@ class YachtDiceWorld(World):
         """
         In generate early, we fill the item-pool, then determine the number of locations, and add filler items.
         """
+        print(self.options)
         self.itempool = []
         self.precollected = []
 
@@ -93,7 +94,7 @@ class YachtDiceWorld(World):
         self.mission_handicaps = [self.random.choices(["D", "R", "P", "M"], k=self.options.mission_difficulty_increase.value * i) for i in range(self.number_of_missions)]
         max_dice_handicap = max([a.count("D") for a in self.mission_handicaps])
         max_roll_handicap = max([a.count("R") for a in self.mission_handicaps])
-
+        max_mult_handicap = max([a.count("M") for a in self.mission_handicaps])
 
         # A list of all possible categories.
         # Every entry in the list has two categories, one 'default' category and one 'alt'.
@@ -132,6 +133,7 @@ class YachtDiceWorld(World):
         extra_roll = 1 + max_roll_handicap
         self.itempool += ["Dice Fragment"] * self.frags_per_dice * extra_dice if self.frags_per_dice > 1 else ["Dice"] * extra_dice
         self.itempool += ["Roll Fragment"] * self.frags_per_roll * extra_roll if self.frags_per_roll > 1 else ["Roll"] * extra_roll
+        self.itempool += ["Fixed Score Multiplier"] * max_mult_handicap * 5
         self.itempool += possible_categories
         self.itempool.remove(start_1)
         self.itempool.remove(start_2)
@@ -278,10 +280,15 @@ class YachtDiceWorld(World):
         already_items = len(self.itempool) + 1  # +1 because of Victory item
 
         # We need to add more filler/useful items if there are many items in the pool to guarantee successful generation
-        extra_locations_needed = (already_items - 45) // 15 + 50
-        self.number_of_locations = already_items + extra_locations_needed
+        extra_locations_needed = (already_items - 45) // 15 + 20
+        total_number_of_locations = already_items + extra_locations_needed
         
-        self.number_of_locations = ((self.number_of_locations + (self.number_of_missions-1)) // self.number_of_missions) * self.number_of_missions  # make multiple of # missions
+        self.number_of_locations = [total_number_of_locations // (self.number_of_missions+1) + 1] * self.number_of_missions
+        self.number_of_locations[0] += total_number_of_locations // (self.number_of_missions+1)
+        self.number_of_locations[0] = max(self.number_of_locations[0], 50, sum(self.number_of_locations) // 4)
+        total_number_of_locations = sum(self.number_of_locations)
+        total_number_of_items = total_number_of_locations
+        
 
         # From here, we will count the number of items in the self.itempool, and add useful/filler items to the pool,
         # making sure not to exceed the number of locations.
@@ -289,38 +296,38 @@ class YachtDiceWorld(World):
         # first, we flood the entire pool with extra points (useful), if that setting is chosen.
         if self.options.add_bonus_points == AddExtraPoints.option_all_of_it:  # all of the extra points
             already_items = len(self.itempool) + 1
-            self.itempool += ["Bonus Point"] * min(self.number_of_locations - already_items, 100)
+            self.itempool += ["Bonus Point"] * min(total_number_of_items - already_items, 100)
 
         # second, we flood the entire pool with story chapters (filler), if that setting is chosen.
         if self.options.add_story_chapters == AddStoryChapters.option_all_of_it:  # all of the story chapters
             already_items = len(self.itempool) + 1
-            number_of_items = min(self.number_of_locations - already_items, 100)
+            number_of_items = min(total_number_of_items - already_items, 100)
             number_of_items = (number_of_items // 10) * 10  # story chapters always come in multiples of 10
             self.itempool += ["Story Chapter"] * number_of_items
 
         # add some extra points (useful)
         if self.options.add_bonus_points == AddExtraPoints.option_sure:  # add extra points if wanted
             already_items = len(self.itempool) + 1
-            self.itempool += ["Bonus Point"] * min(self.number_of_locations - already_items, 10)
+            self.itempool += ["Bonus Point"] * min(total_number_of_items - already_items, 10)
 
         # add some story chapters (filler)
         if self.options.add_story_chapters == AddStoryChapters.option_sure:  # add extra points if wanted
             already_items = len(self.itempool) + 1
-            if self.number_of_locations - already_items >= 10:
+            if total_number_of_items - already_items >= 10:
                 self.itempool += ["Story Chapter"] * 10
 
         # add some more extra points if there is still room
         if self.options.add_bonus_points == AddExtraPoints.option_sure:
             already_items = len(self.itempool) + 1
-            self.itempool += ["Bonus Point"] * min(self.number_of_locations - already_items, 10)
+            self.itempool += ["Bonus Point"] * min(total_number_of_items - already_items, 10)
 
         # add some encouragements filler-items if there is still room
         already_items = len(self.itempool) + 1
-        self.itempool += ["Encouragement"] * min(self.number_of_locations - already_items, 5)
+        self.itempool += ["Encouragement"] * min(total_number_of_items - already_items, 5)
 
         # add some fun facts filler-items if there is still room
         already_items = len(self.itempool) + 1
-        self.itempool += ["Fun Fact"] * min(self.number_of_locations - already_items, 5)
+        self.itempool += ["Fun Fact"] * min(total_number_of_items - already_items, 5)
 
         # finally, add some "Good RNG" and "Bad RNG" items to complete the item pool
         # these items are filler and do not do anything.
@@ -330,15 +337,15 @@ class YachtDiceWorld(World):
         p = 1.1 - 0.25 * self.difficulty
         already_items = len(self.itempool) + 1
         self.itempool += self.random.choices(
-            ["Good RNG", "Bad RNG"], weights=[p, 1 - p], k=self.number_of_locations - already_items
+            ["Good RNG", "Bad RNG"], weights=[p, 1 - p], k=total_number_of_items - already_items
         )
 
         # we are done adding items. Now because of the last step, number of items should be number of locations
         already_items = len(self.itempool) + 1
-        if already_items != self.number_of_locations:
+        if already_items != total_number_of_items:
             raise Exception(
                 f"[Yacht Dice] Number in self.itempool is not number of locations "
-                f"{already_items} {self.number_of_locations}."
+                f"{already_items} {total_number_of_items}."
             )
 
         # add precollected items using push_precollected. Items in self.itempool get created in create_items
@@ -354,7 +361,7 @@ class YachtDiceWorld(World):
 
     def create_regions(self):
         # call the ini_locations function, that generates locations based on the inputs.
-        location_table = ini_locations(self.goal_score, self.max_score, self.number_of_locations, self.number_of_missions, self.difficulty)
+        location_table = ini_locations(self.goal_score, self.max_score, self.number_of_locations, self.difficulty)
 
         # simple menu-board construction
         menu = Region("Menu", self.player, self.multiworld)

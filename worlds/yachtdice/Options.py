@@ -26,7 +26,7 @@ class NumberOfMissions(Range):
 
     display_name = "Number of missions"
     range_start = 1
-    range_end = 10
+    range_end = 3
     default = 5
     
 class MissionDifficultyIncrease(Range):
