@@ -52,7 +52,7 @@ class BigWavesGameMode(Choice):
     display_name = "Big Waves game mode"
     option_aye = 1
     option_nay = 2
-    default = 1
+    default = 2
 
 
 class MinimalNumberOfDiceAndRolls(Choice):

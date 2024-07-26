@@ -224,7 +224,7 @@ def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, allowed_cat
             dice_simulation_no_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player, expoints)
         )
 
-def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, allowed_categories, difficulty, dice_simulation_no_big_waves):
+def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, allowed_categories, difficulty, big_waves):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a AP state object, while doing access rules.
@@ -236,13 +236,13 @@ def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, 
         categories, num_dice, num_rolls, fixed_mult, step_mult, expoints = extract_progression(
             state, player, frags_per_dice, frags_per_roll, allowed_categories
         )
-        if dice_simulation_no_big_waves:
+        if big_waves:
             state.prog_items[player]["maximum_achievable_score"] = (
                 dice_simulation_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player, expoints, state)
             )
         else:
             state.prog_items[player]["maximum_achievable_score"] = (
-                dice_simulation_no_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player, expoints, state)
+                dice_simulation_no_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player, expoints)
             )
 
     return state.prog_items[player]["maximum_achievable_score"]
