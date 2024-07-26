@@ -43,6 +43,16 @@ class ScoreForGoal(Range):
     range_start = 500
     range_end = 1000
     default = 777
+    
+
+class BigWavesGameMode(Choice):
+    """
+    Rough seas today, you will lose a dice or a roll every 100 points because of big waves.
+    """
+    display_name = "Big Waves game mode"
+    option_aye = 1
+    option_nay = 2
+    default = 1
 
 
 class MinimalNumberOfDiceAndRolls(Choice):
@@ -282,6 +292,7 @@ class YachtDiceOptions(PerGameCommonOptions):
     game_difficulty: GameDifficulty
     score_for_last_check: ScoreForLastCheck
     score_for_goal: ScoreForGoal
+    big_waves_game_mode: BigWavesGameMode
 
     minimal_number_of_dice_and_rolls: MinimalNumberOfDiceAndRolls
     number_of_dice_fragments_per_dice: NumberDiceFragmentsPerDice

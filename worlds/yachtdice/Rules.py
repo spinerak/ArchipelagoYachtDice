@@ -80,8 +80,30 @@ def extract_progression(state, player, frags_per_dice, frags_per_roll, allowed_c
 
 yachtdice_cache = {}
 
+def dice_simulation_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, diff, player, ex_points, state = "x"):
+    
+    minimum_score = 0
+    last_score = 0
+    decrease_dice = 0
+    decrease_rolls = 0
+    for big_wave_threshold in [i*100 for i in range(1,10)]: 
+        reached_wave = False
+        if minimum_score > big_wave_threshold:
+            reached_wave = True
+        else:
+            last_score = dice_simulation_no_big_waves(categories, num_dice - decrease_dice, num_rolls - decrease_rolls, fixed_mult, step_mult, diff, player, ex_points)
+            if last_score > big_wave_threshold:
+                reached_wave = True
+        if reached_wave:
+            if big_wave_threshold % 200 == 0:
+                decrease_rolls += 1
+            else:
+                decrease_dice += 1
+        else:
+            break
+    return max(big_wave_threshold - 100, last_score)
 
-def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, diff, player):
+def dice_simulation_no_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, diff, player, ex_points):
     """
     Function that returns the feasible score in logic based on items obtained.
     """
@@ -91,14 +113,14 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
         num_rolls,
         fixed_mult,
         step_mult,
-        diff,
+        diff
     )  # identifier
 
     if player not in yachtdice_cache:
         yachtdice_cache[player] = {}
 
     if tup in yachtdice_cache[player]:
-        return yachtdice_cache[player][tup]
+        return yachtdice_cache[player][tup] + ex_points
 
     # sort categories because for the step multiplier, you will want low-scoring categories first
     categories.sort(key=lambda category: category.mean_score(num_dice, num_rolls))
@@ -177,15 +199,15 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
 
     # cache management; we rarely/never need more than 400 entries. But if for some reason it became large,
     # delete the first entry of the player cache.
-    if len(yachtdice_cache[player]) > 400:
-        # Remove the oldest item
-        oldest_tup = next(iter(yachtdice_cache[player]))
-        del yachtdice_cache[player][oldest_tup]
+    # if len(yachtdice_cache[player]) > 400:
+    #     # Remove the oldest item
+    #     oldest_tup = next(iter(yachtdice_cache[player]))
+    #     del yachtdice_cache[player][oldest_tup]
 
-    return yachtdice_cache[player][tup]
+    return yachtdice_cache[player][tup] + ex_points
 
 
-def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, allowed_categories, difficulty, player):
+def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, allowed_categories, difficulty, player, big_waves_game_mode):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a list, during filling of item pool.
@@ -193,12 +215,16 @@ def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, allowed_cat
     categories, num_dice, num_rolls, fixed_mult, step_mult, expoints = extract_progression(
         state, "state_is_a_list", frags_per_dice, frags_per_roll, allowed_categories
     )
-    return (
-        dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player) + expoints
-    )
+    if big_waves_game_mode:
+        return (
+            dice_simulation_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player, expoints)
+        )
+    else: 
+        return (
+            dice_simulation_no_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player, expoints)
+        )
 
-
-def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, allowed_categories, difficulty):
+def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, allowed_categories, difficulty, dice_simulation_no_big_waves):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a AP state object, while doing access rules.
@@ -206,18 +232,23 @@ def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, 
 
     if state.prog_items[player]["state_is_fresh"] == 0:
         state.prog_items[player]["state_is_fresh"] = 1
+        state.prog_items[player]["state_is_only_added_to"] = 1
         categories, num_dice, num_rolls, fixed_mult, step_mult, expoints = extract_progression(
             state, player, frags_per_dice, frags_per_roll, allowed_categories
         )
-        state.prog_items[player]["maximum_achievable_score"] = (
-            dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player)
-            + expoints
-        )
+        if dice_simulation_no_big_waves:
+            state.prog_items[player]["maximum_achievable_score"] = (
+                dice_simulation_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player, expoints, state)
+            )
+        else:
+            state.prog_items[player]["maximum_achievable_score"] = (
+                dice_simulation_no_big_waves(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty, player, expoints, state)
+            )
 
     return state.prog_items[player]["maximum_achievable_score"]
 
 
-def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, allowed_categories, difficulty):
+def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, allowed_categories, difficulty, big_waves):
     """
     Sets rules on reaching scores
     """
@@ -226,7 +257,7 @@ def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_ro
         set_rule(
             location,
             lambda state, curscore=location.yacht_dice_score, player=player: dice_simulation_state_change(
-                state, player, frags_per_dice, frags_per_roll, allowed_categories, difficulty
+                state, player, frags_per_dice, frags_per_roll, allowed_categories, difficulty, big_waves
             )
             >= curscore,
         )

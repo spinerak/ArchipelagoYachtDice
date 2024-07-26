@@ -8,6 +8,7 @@ from worlds.AutoWorld import WebWorld, World
 from .Items import YachtDiceItem, item_groups, item_table
 from .Locations import YachtDiceLocation, all_locations, ini_locations
 from .Options import (
+    BigWavesGameMode,
     AddExtraPoints,
     AddStoryChapters,
     GameDifficulty,
@@ -94,6 +95,12 @@ class YachtDiceWorld(World):
             num_of_rolls = 2
         else:
             raise Exception(f"[Yacht Dice] Unknown MinimalNumberOfDiceAndRolls options {opt_dice_and_rolls}")
+        
+        self.big_waves_game_mode = self.options.big_waves_game_mode == BigWavesGameMode.option_aye
+        
+        if self.big_waves_game_mode:
+            num_of_dice += 5
+            num_of_rolls += 4
 
         # amount of dice and roll fragments needed to get a dice or roll
         self.frags_per_dice = self.options.number_of_dice_fragments_per_dice.value
@@ -329,6 +336,7 @@ class YachtDiceWorld(World):
             self.possible_categories,
             self.difficulty,
             self.player,
+            self.big_waves_game_mode
         )
 
         # if we overshoot, remove items until you get below 1000, then return the last removed item
@@ -343,6 +351,7 @@ class YachtDiceWorld(World):
                     self.possible_categories,
                     self.difficulty,
                     self.player,
+                    self.big_waves_game_mode
                 )
             self.itempool.append(removed_item)
         else:
@@ -364,6 +373,7 @@ class YachtDiceWorld(World):
                         self.possible_categories,
                         self.difficulty,
                         self.player,
+                        self.big_waves_game_mode
                     )
 
         # count the number of locations in the game.
@@ -486,6 +496,7 @@ class YachtDiceWorld(World):
             self.frags_per_roll,
             self.possible_categories,
             self.difficulty,
+            self.big_waves_game_mode
         )
         set_yacht_completion_rules(self.multiworld, self.player)
 
@@ -502,6 +513,7 @@ class YachtDiceWorld(World):
             "number_of_roll_fragments_per_roll",
             "which_story",
             "allow_manual_input",
+            "big_waves_game_mode"
         )
         slot_data = {**yacht_dice_data, **yacht_dice_options}  # combine the two
         slot_data["number_of_dice_fragments_per_dice"] = self.frags_per_dice
