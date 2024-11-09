@@ -344,9 +344,10 @@ def set_er_region_rules(world: "TunicWorld", regions: Dict[str, Region], portal_
         connecting_region=regions["Overworld"],
         rule=lambda state: state.has_any({grapple, laurels}, player))
 
-    regions["Overworld"].connect(
+    cube_entrance = regions["Overworld"].connect(
         connecting_region=regions["Cube Cave Entrance Region"],
         rule=lambda state: state.has(gun, player) or can_shop(state, world))
+    world.multiworld.register_indirect_condition(regions["Shop"], cube_entrance)
     regions["Cube Cave Entrance Region"].connect(
         connecting_region=regions["Overworld"])
 
@@ -762,7 +763,10 @@ def set_er_region_rules(world: "TunicWorld", regions: Dict[str, Region], portal_
     regions["Beneath the Vault Ladder Exit"].connect(
         connecting_region=regions["Beneath the Vault Main"],
         rule=lambda state: has_ladder("Ladder to Beneath the Vault", state, world)
-        and has_lantern(state, world))
+        and has_lantern(state, world)
+        # there's some boxes in the way
+        and (has_stick(state, player) or state.has_any((gun, grapple, fire_wand, laurels), player)))
+    # on the reverse trip, you can lure an enemy over to break the boxes if needed
     regions["Beneath the Vault Main"].connect(
         connecting_region=regions["Beneath the Vault Ladder Exit"],
         rule=lambda state: has_ladder("Ladder to Beneath the Vault", state, world))
