@@ -56,7 +56,7 @@ class YachtDiceWorld(World):
 
     item_name_groups = item_groups
 
-    ap_world_version = "2.1.4"
+    ap_world_version = "2.2.0"
 
     def _get_yachtdice_data(self):
         return {
@@ -104,17 +104,7 @@ class YachtDiceWorld(World):
             self.frags_per_roll = min(self.frags_per_roll, 2)
 
         # set difficulty
-        diff_value = self.options.game_difficulty
-        if diff_value == GameDifficulty.option_easy:
-            self.difficulty = 1
-        elif diff_value == GameDifficulty.option_medium:
-            self.difficulty = 2
-        elif diff_value == GameDifficulty.option_hard:
-            self.difficulty = 3
-        elif diff_value == GameDifficulty.option_extreme:
-            self.difficulty = 4
-        else:
-            raise Exception(f"[Yacht Dice] Unknown GameDifficulty options {diff_value}")
+        self.difficulty = self.options.game_difficulty.value
 
         # Create a list with the specified number of 1s
         num_ones = self.options.alternative_categories.value
@@ -320,7 +310,6 @@ class YachtDiceWorld(World):
             self.frags_per_roll,
             self.possible_categories,
             self.difficulty,
-            self.player,
         )
 
         # if we overshoot, remove items until you get below 1000, then return the last removed item
@@ -334,7 +323,6 @@ class YachtDiceWorld(World):
                     self.frags_per_roll,
                     self.possible_categories,
                     self.difficulty,
-                    self.player,
                 )
             self.itempool.append(removed_item)
         else:
@@ -355,7 +343,6 @@ class YachtDiceWorld(World):
                         self.frags_per_roll,
                         self.possible_categories,
                         self.difficulty,
-                        self.player,
                     )
 
         # count the number of locations in the game.

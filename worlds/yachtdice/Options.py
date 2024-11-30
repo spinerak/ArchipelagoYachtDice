@@ -6,10 +6,10 @@ from Options import Choice, OptionGroup, PerGameCommonOptions, Range
 class GameDifficulty(Choice):
     """
     Difficulty. This option determines how difficult the scores are to achieve.
-    Easy: for beginners. No luck required, just roll the dice and have fun. Lower final goal.
-    Medium: intended difficulty. If you play smart, you will finish the game without any trouble.
-    Hard: you will need to play smart and be lucky.
-    Extreme: really hard mode, which requires many brain wrinkles and insane luck. NOT RECOMMENDED FOR MULTIWORLDS.
+    The difficulties are ordered from easiest to hardest.
+    Please try the difficulty to see if it is feasible and fun.
+    Best way to test is to see if you can beat the score in logic when all items are unlocked.
+    I DO NOT RECOMMEND OUTRAGEOUS AND IMPOSSIBLE FOR MULTIWORLDS
     """
 
     display_name = "Game difficulty"
@@ -17,6 +17,9 @@ class GameDifficulty(Choice):
     option_medium = 2
     option_hard = 3
     option_extreme = 4
+    option_insane = 5
+    option_outrageous = 6
+    option_impossible = 7
     default = 2
 
 
