@@ -1,20 +1,28 @@
 import math
-from typing import Dict
+from typing import Dict, TextIO
 
-from BaseClasses import CollectionState, Entrance, Item, ItemClassification, Location, Region, Tutorial
+from BaseClasses import CollectionState, Entrance, Item, ItemClassification, Region, Tutorial
 
 from worlds.AutoWorld import WebWorld, World
 
-from .Items import YachtDiceItem, item_groups, item_table
-from .Locations import YachtDiceLocation, all_locations, ini_locations
+from .Items import YachtDiceItem, item_groups, item_table, all_categories, find_category_index, get_normal_categories, get_alt_categories
+from .Locations import YachtDiceLocation, all_locations, ini_locations, LocData, starting_index
 from .Options import (
     AddExtraPoints,
-    AddStoryChapters,
+    AddStoryChapters,    
+    TotalNumberOfCategories,
+    AllowedNormalCategories,
+    AllowedAlternativeCategories,
+    PercentageAlternativeCategories,
+    AllowedStartingCategories,
+    NumberOfStartingCategories,
+    FillStartInventoryIfNeeded,
     GameDifficulty,
     MinimalNumberOfDiceAndRolls,
     MinimizeExtraItems,
     PointsSize,
     YachtDiceOptions,
+    DoubleCategoryCalculation,
     yd_option_groups,
 )
 from .Rules import dice_simulation_fill_pool, set_yacht_completion_rules, set_yacht_rules
@@ -56,7 +64,7 @@ class YachtDiceWorld(World):
 
     item_name_groups = item_groups
 
-    ap_world_version = "2.2.0"
+    ap_world_version = "2.2.1"
 
     def _get_yachtdice_data(self):
         return {
@@ -67,7 +75,7 @@ class YachtDiceWorld(World):
             "race": self.multiworld.is_race,
         }
 
-    def generate_early(self):
+    def generate_early(self):        
         """
         In generate early, we fill the item-pool, then determine the number of locations, and add filler items.
         """
@@ -105,47 +113,60 @@ class YachtDiceWorld(World):
 
         # set difficulty
         self.difficulty = self.options.game_difficulty.value
+        self.double_category_doubled = (self.options.double_category_calculation == DoubleCategoryCalculation.option_double)
+        
+        normal_categories = sorted(self.options.allowed_normal_categories.value)
+        alternative_categories = sorted(self.options.allowed_alternative_categories.value)
+        
+        number_of_categories = min(len(normal_categories) + len(alternative_categories), self.options.total_number_of_categories.value)
+        
+        weight_normal = 100 - self.options.percentage_alternative_categories.value + 0.000000001
+        weight_alt = self.options.percentage_alternative_categories.value + 0.000000001
+        
+        all_candidate_categories = normal_categories + alternative_categories
+        weights = [weight_normal] * len(normal_categories) + [weight_alt] * len(alternative_categories)
 
-        # Create a list with the specified number of 1s
-        num_ones = self.options.alternative_categories.value
-        categorylist = [1] * num_ones + [0] * (16 - num_ones)
-
-        # Shuffle the list to randomize the order
-        self.random.shuffle(categorylist)
-
-        # A list of all possible categories.
-        # Every entry in the list has two categories, one 'default' category and one 'alt'.
-        # You get either of the two for every entry, so a total of 16 unique categories.
-        all_categories = [
-            ["Category Choice", "Category Double Threes and Fours"],
-            ["Category Inverse Choice", "Category Quadruple Ones and Twos"],
-            ["Category Ones", "Category Distincts"],
-            ["Category Twos", "Category Two times Ones"],
-            ["Category Threes", "Category Half of Sixes"],
-            ["Category Fours", "Category Twos and Threes"],
-            ["Category Fives", "Category Sum of Odds"],
-            ["Category Sixes", "Category Sum of Evens"],
-            ["Category Pair", "Category Micro Straight"],
-            ["Category Three of a Kind", "Category Three Odds"],
-            ["Category Four of a Kind", "Category 1-2-1 Consecutive"],
-            ["Category Tiny Straight", "Category Three Distinct Dice"],
-            ["Category Small Straight", "Category Two Pair"],
-            ["Category Large Straight", "Category 2-1-2 Consecutive"],
-            ["Category Full House", "Category Five Distinct Dice"],
-            ["Category Yacht", "Category 4&5 Full House"],
-        ]
-
-        # categories used in this game.
         self.possible_categories = []
+        for _ in range(number_of_categories):
+            ind = self.random.choices(range(len(weights)), weights=weights)[0]
+            # Pop from weights and all_candidate_categories before appending
+            self.possible_categories.append(all_candidate_categories.pop(ind))
+            weights.pop(ind)
 
-        for index, cats in enumerate(all_categories):
-            self.possible_categories.append(cats[categorylist[index]])
-
-            # Add Choice and Inverse choice (or their alts) to the precollected list.
-            if index == 0 or index == 1:
-                self.precollected.append(cats[categorylist[index]])
+            
+        print(self.possible_categories)
+        
+        number_added = 0
+        number_of_starting_categories = self.options.number_of_starting_categories.value
+        starting_categories = []
+        
+        for cat in self.possible_categories:
+            if cat in self.options.allowed_starting_categories.value:
+                starting_categories.append(cat)
+                number_added += 1
+                if number_added == number_of_starting_categories:
+                    break
+        
+        if number_added < number_of_starting_categories:
+            self.random.shuffle(self.possible_categories)
+            for cat in self.possible_categories:
+                if cat not in starting_categories:
+                    self.precollected.append(cat)
+                    number_added += 1
+                    if number_added == number_of_starting_categories:
+                        break
+        
+        
+        self.cat_indices = [find_category_index(c) for c in self.possible_categories]
+        self.possible_categories = [cat for _, cat in sorted(zip(self.cat_indices, self.possible_categories))]
+        self.cat_indices = [find_category_index(c) for c in self.possible_categories]
+                
+        for cat in self.possible_categories:
+            if cat in starting_categories:
+                self.precollected.append(cat)
             else:
-                self.itempool.append(cats[categorylist[index]])
+                self.itempool.append(cat)
+
 
         # Also start with one Roll and one Dice
         self.precollected.append("Dice")
@@ -197,6 +218,23 @@ class YachtDiceWorld(World):
         # max score is the value of the last check. Goal score is the score needed to 'finish' the game
         self.max_score = self.options.score_for_last_check.value
         self.goal_score = min(self.max_score, self.options.score_for_goal.value)
+        
+        if self.options.fill_start_inventory_if_needed == FillStartInventoryIfNeeded.option_on:
+            c = 0
+            while(dice_simulation_fill_pool(
+                    self.precollected,
+                    self.frags_per_dice,
+                    self.frags_per_roll,
+                    self.possible_categories,
+                    self.double_category_doubled,
+                    self.difficulty,
+                ) < 5 and c < 16
+            ):
+                if c%2:
+                    self.precollected.append("Roll")
+                else:
+                    self.precollected.append("Dice")
+                c += 1
 
         # Yacht Dice adds items into the pool until a score of at least 1000 is reached.
         # the yaml contains weights, which determine how likely it is that specific items get added.
@@ -266,9 +304,9 @@ class YachtDiceWorld(World):
                 # Below entries are the weights to add each category.
                 # Prefer to add choice or number categories, because the other categories are too "all or nothing",
                 # which often don't give any points, until you get overpowered, and then they give all points.
-                cat_weights = [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1]
+                
                 weights["Double category"] /= 1.1
-                return self.random.choices(self.possible_categories, weights=cat_weights)[0]
+                return self.random.choices(self.possible_categories, weights=[2 if i < 9 else 1 for i in self.cat_indices])[0]
             elif which_item_to_add == "Points":
                 score_dist = self.options.points_size
                 probs = {"1 Point": 1, "10 Points": 0, "100 Points": 0}
@@ -303,14 +341,17 @@ class YachtDiceWorld(World):
         # adding 17 items as a start seems like the smartest way to get close to 1000 points
         for _ in range(17):
             self.itempool.append(get_item_to_add(weights, extra_points_added, step_score_multipliers_added))
+        
 
         score_in_logic = dice_simulation_fill_pool(
             self.itempool + self.precollected,
             self.frags_per_dice,
             self.frags_per_roll,
             self.possible_categories,
+            self.double_category_doubled,
             self.difficulty,
         )
+        
 
         # if we overshoot, remove items until you get below 1000, then return the last removed item
         if score_in_logic > 1000:
@@ -322,6 +363,7 @@ class YachtDiceWorld(World):
                     self.frags_per_dice,
                     self.frags_per_roll,
                     self.possible_categories,
+                    self.double_category_doubled,
                     self.difficulty,
                 )
             self.itempool.append(removed_item)
@@ -342,8 +384,13 @@ class YachtDiceWorld(World):
                         self.frags_per_dice,
                         self.frags_per_roll,
                         self.possible_categories,
+                        self.double_category_doubled,
                         self.difficulty,
                     )
+        
+        self.scores_in_logic = [f"{dice_simulation_fill_pool(self.itempool + self.precollected, self.frags_per_dice, self.frags_per_roll, self.possible_categories, self.double_category_doubled, d, debug=(d==self.difficulty))}{'*' if d == self.difficulty else ''}" for d in [1,2,3,4,5,6,7]]
+
+        
 
         # count the number of locations in the game.
         already_items = len(self.itempool) + 1  # +1 because of Victory item
@@ -395,8 +442,7 @@ class YachtDiceWorld(World):
         # these items are filler and do not do anything.
 
         # probability of Good and Bad rng, based on difficulty for fun :)
-
-        p = 1.1 - 0.25 * self.difficulty
+        p = max(0.2, 1.1 - 0.2 * self.difficulty)  # it's fine if weights become negative
         already_items = len(self.itempool) + 1
         self.itempool += self.random.choices(
             ["Good RNG", "Bad RNG"], weights=[p, 1 - p], k=self.number_of_locations - already_items
@@ -417,20 +463,31 @@ class YachtDiceWorld(World):
         # make sure one dice and one roll is early, so that you will have 2 dice and 2 rolls soon
         self.multiworld.early_items[self.player]["Dice"] = 1
         self.multiworld.early_items[self.player]["Roll"] = 1
-
-    def create_items(self):
-        self.multiworld.itempool += [self.create_item(name) for name in self.itempool]
-
-    def create_regions(self):
+        
+        # up next, prepare locations. We do this here because we might need to add more filler items
         # call the ini_locations function, that generates locations based on the inputs.
-        location_table = ini_locations(
+        self.score_locations = ini_locations(
             self.goal_score,
             self.max_score,
             self.number_of_locations,
             self.difficulty,
             self.skip_early_locations,
             self.multiworld.players,
+            self.options.include_scores.value
         )
+        
+        # there should be exactly one more location than items (because of Victory event)
+        if len(self.score_locations) > len(self.itempool) - 1:
+            self.itempool += self.random.choices(
+                ["Good RNG", "Bad RNG"], weights=[p, 1 - p], k=len(self.score_locations) - len(self.itempool) - 1
+            )
+
+    def create_items(self):
+        self.multiworld.itempool += [self.create_item(name) for name in self.itempool]
+
+    def create_regions(self):
+        
+        location_table = {f"{score} score": LocData(starting_index + score, "Board", score) for score in self.score_locations}
 
         # simple menu-board construction
         menu = Region("Menu", self.player, self.multiworld)
@@ -469,6 +526,7 @@ class YachtDiceWorld(World):
             self.frags_per_dice,
             self.frags_per_roll,
             self.possible_categories,
+            self.double_category_doubled,
             self.difficulty,
         )
         set_yacht_completion_rules(self.multiworld, self.player)
@@ -490,10 +548,13 @@ class YachtDiceWorld(World):
         slot_data = {**yacht_dice_data, **yacht_dice_options}  # combine the two
         slot_data["number_of_dice_fragments_per_dice"] = self.frags_per_dice
         slot_data["number_of_roll_fragments_per_roll"] = self.frags_per_roll
+        slot_data["double_category_doubled"] = self.double_category_doubled
         slot_data["goal_score"] = self.goal_score
         slot_data["last_check_score"] = self.max_score
         slot_data["allowed_categories"] = self.possible_categories
         slot_data["ap_world_version"] = self.ap_world_version
+        slot_data["precollected"] = [item.code for item in self.multiworld.precollected_items[self.player]]
+        slot_data["number_of_locations"] = self.number_of_locations
         return slot_data
 
     def create_item(self, name: str) -> Item:
@@ -515,3 +576,6 @@ class YachtDiceWorld(World):
             state.prog_items[self.player]["state_is_fresh"] = 0
 
         return change
+    
+    def write_spoiler(self, spoiler_handle: TextIO) -> None:
+        spoiler_handle.write(f"\nYacht Dice scores in logic for Player {self.player_name}: {self.scores_in_logic}\n")

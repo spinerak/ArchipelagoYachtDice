@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from Options import Choice, OptionGroup, PerGameCommonOptions, Range
+from .Items import all_categories, get_normal_categories, get_alt_categories
+from Options import Choice, OptionGroup, OptionSet, PerGameCommonOptions, Range, Visibility
 
 
 class GameDifficulty(Choice):
@@ -91,22 +92,79 @@ class NumberRollFragmentsPerRoll(Range):
     range_start = 1
     range_end = 5
     default = 4
-
-
-class AlternativeCategories(Range):
+    
+    
+class TotalNumberOfCategories(Range):
     """
-    There are 16 default categories, but there are also 16 alternative categories.
-    These alternative categories can be randomly selected to replace the default categories.
-    They are a little strange, but can give a fun new experience.
-    In the game, you can hover over categories to check what they do.
-    This option determines the number of alternative categories in your game.
+    Number of categories in the game. Note if the list of allowed categories is smaller, there will be fewer categories.
     """
-
-    display_name = "Number of alternative categories"
-    range_start = 0
+    display_name = "Total number of categories"
+    range_start = 1
     range_end = 16
-    default = 0
+    default = 16
 
+
+class AllowedNormalCategories(OptionSet):
+    """
+    Normal categories that are allowed to appear.
+    """
+    display_name = "Allowed normal categories"
+    valid_keys = get_normal_categories().keys()
+    default = valid_keys  
+    
+    
+class AllowedAlternativeCategories(OptionSet):
+    """
+    Alternative categories that are allowed to appear.
+    """
+    display_name = "Allowed alternative categories"
+    valid_keys = get_alt_categories().keys()
+    default = valid_keys 
+    
+    
+class PercentageAlternativeCategories(Range):
+    """
+    How likely alternative categories are to appear. 0 means no chance, 100 means only alternative categories.
+    
+    """
+    display_name = "Likeliness of alternative categories"
+    range_start = 0
+    range_end = 100
+    default = 0
+  
+  
+class AllowedStartingCategories(OptionSet):
+    """
+    Set of categories that may appear as starting categories.
+    """
+    display_name = "Allowed starting categories"
+    valid_keys = all_categories
+    default = ["Category Choice", "Category Double Threes and Fours", "Category Inverse Choice", "Category Quadruple Ones and Twos"]
+    
+    
+class NumberOfStartingCategories(Range):
+    """
+    Number of categories from the list of allowed starting categories that you start your game with.
+    Note that you may start with more dice or rolls if the starting categories are really bad or require many dice.
+    """
+    range_start = 1
+    range_end = 16
+    default = 2
+
+
+class FillStartInventoryIfNeeded(Choice):
+    """
+    Hidden option.
+    If you only pick categories that need many dice or rolls, you might get stuck early on.
+    If this option is on, you will start with as many extra dice or rolls needed to get to a score of 5 at the start.
+    When this option is off and you have difficult categories, other games in multiworld might save you.
+    """
+    visibility = Visibility.none
+    display_name = "Fill start inventory if needed"
+    option_on = 1
+    option_off = 2
+    default = 1
+    
 
 class ChanceOfDice(Range):
     """
@@ -168,6 +226,19 @@ class ChanceOfDoubleCategory(Range):
     range_start = 0
     range_end = 100
     default = 50
+    
+
+class DoubleCategoryCalculation(Choice):
+    """
+    This option determines how the score of a category is calculated when it appears multiple times.
+    double: the multiplier is doubled each time the category is obtained.
+    increment: the multiplier is increased by 1 each time the category is obtained.
+    """
+    
+    display_name = "Double category calculation"
+    option_double = 1
+    option_increment = 2
+    default = 1
 
 
 class ChanceOfPoints(Range):
@@ -279,6 +350,17 @@ class AllowManual(Choice):
     option_yes_allow = 1
     option_no_dont_allow = 2
     default = 1
+    
+class IncludeScores(OptionSet):
+    """
+    Scores in this set will always be included. 
+    Note that if you put many scores here, there will be many filler items too.
+    You can put numbers 1 up to (including) 1000. Note that scores above last check don't count.
+    You can also add 'Everything' to the list, which adds all possible scores to the pool (up to last check).
+    """
+    display_name = "Guaranteed included scores as locations"
+    valid_keys = [str(i) for i in range(1,1001)] + ['Everything']
+    default = ['1']
 
 
 @dataclass
@@ -291,7 +373,13 @@ class YachtDiceOptions(PerGameCommonOptions):
     number_of_dice_fragments_per_dice: NumberDiceFragmentsPerDice
     number_of_roll_fragments_per_roll: NumberRollFragmentsPerRoll
 
-    alternative_categories: AlternativeCategories
+    total_number_of_categories: TotalNumberOfCategories
+    allowed_normal_categories: AllowedNormalCategories
+    allowed_alternative_categories: AllowedAlternativeCategories
+    percentage_alternative_categories: PercentageAlternativeCategories
+    allowed_starting_categories: AllowedStartingCategories
+    number_of_starting_categories: NumberOfStartingCategories
+    fill_start_inventory_if_needed: FillStartInventoryIfNeeded
 
     allow_manual_input: AllowManual
 
@@ -301,6 +389,7 @@ class YachtDiceOptions(PerGameCommonOptions):
     weight_of_fixed_score_multiplier: ChanceOfFixedScoreMultiplier
     weight_of_step_score_multiplier: ChanceOfStepScoreMultiplier
     weight_of_double_category: ChanceOfDoubleCategory
+    double_category_calculation: DoubleCategoryCalculation
     weight_of_points: ChanceOfPoints
     points_size: PointsSize
 
@@ -308,9 +397,23 @@ class YachtDiceOptions(PerGameCommonOptions):
     add_bonus_points: AddExtraPoints
     add_story_chapters: AddStoryChapters
     which_story: WhichStory
+    
+    include_scores: IncludeScores
 
 
 yd_option_groups = [
+    OptionGroup(
+        "Categories",
+        [
+            TotalNumberOfCategories,
+            AllowedNormalCategories,
+            AllowedAlternativeCategories,
+            PercentageAlternativeCategories,
+            AllowedStartingCategories,
+            NumberOfStartingCategories,
+            FillStartInventoryIfNeeded
+        ],
+    ),
     OptionGroup(
         "Extra progression items",
         [
@@ -319,6 +422,7 @@ yd_option_groups = [
             ChanceOfFixedScoreMultiplier,
             ChanceOfStepScoreMultiplier,
             ChanceOfDoubleCategory,
+            DoubleCategoryCalculation,
             ChanceOfPoints,
             PointsSize,
         ],
@@ -332,4 +436,11 @@ yd_option_groups = [
             WhichStory
         ],
     ),
+    OptionGroup(
+        "Misc",
+        [
+            IncludeScores,
+            AllowManual,
+        ]
+    )
 ]

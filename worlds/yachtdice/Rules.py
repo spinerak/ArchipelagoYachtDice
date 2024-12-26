@@ -6,6 +6,7 @@ from BaseClasses import MultiWorld
 
 from worlds.generic.Rules import set_rule
 
+from .Items import all_categories
 from .YachtWeights import yacht_weights
 
 # This module adds logic to the apworld.
@@ -21,15 +22,31 @@ class Category:
     def __init__(self, name, quantity=1):
         self.name = name
         self.quantity = quantity  # how many times you have the category
+        
+    def get_dist(self, num_dice, num_rolls):
+        category_name = self.name
+        category_mult = 1
+        
+        if all_categories[category_name][0][0] != "":
+            category_mult = all_categories[category_name][0][1]
+            category_name = all_categories[category_name][0][0]
+        
+        dist = yacht_weights[category_name, num_dice, num_rolls]
+        return dist, category_mult
+
 
     # return mean score of a category
     def mean_score(self, num_dice, num_rolls):
         if num_dice <= 0 or num_rolls <= 0:
             return 0
         mean_score = 0
-        for key, value in yacht_weights[self.name, min(8, num_dice), min(8, num_rolls)].items():
+        
+        dist, mult = self.get_dist(num_dice=num_dice, num_rolls=num_rolls)
+        
+        for key, value in dist.items():
             mean_score += key * value / 100000
-        return mean_score
+        
+        return mean_score * mult
 
 
 class ListState:
@@ -54,6 +71,7 @@ def extract_progression(state, player, frags_per_dice, frags_per_roll, allowed_c
     number_of_rerolls = state.count("Roll", player) + state.count("Roll Fragment", player) // frags_per_roll
     number_of_fixed_mults = state.count("Fixed Score Multiplier", player)
     number_of_step_mults = state.count("Step Score Multiplier", player)
+    
 
     categories = [
         Category(category_name, state.count(category_name, player))
@@ -75,19 +93,11 @@ def extract_progression(state, player, frags_per_dice, frags_per_roll, allowed_c
     )
 
 
-border_values = [0, [.22, .41], [.41, .51], [.51, .64], [.64, .76], [.76, .88], [.88, .94], [.94, .98]]
-def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, diff):
+border_values = [0, [.22, .41], [.41, .51], [.51, .64], [.64, .76], [.76, .88], [.88, .93], [.93, .97]]
+def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, double_category_doubled, diff, recurse = True, debug = False):
     """
     Function that returns the feasible score in logic based on items obtained.
     """
-    tup = (
-        tuple([c.name + str(c.quantity) for c in categories]),
-        num_dice,
-        num_rolls,
-        fixed_mult,
-        step_mult,
-        diff,
-    )  # identifier
 
     # sort categories because for the step multiplier, you will want low-scoring categories first
     # to avoid errors with order changing when obtaining rolls, we order assuming 4 rolls
@@ -106,29 +116,39 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
     
 
     for j, category in enumerate(categories):
-        dist = yacht_weights[category.name, dice_limited,rolls_limited]
-        
+        dist, mult_d = category.get_dist(dice_limited,rolls_limited)
         def find_percentile(distribution, percentile):
             perc = percentile * 100000
             cumulative_prob = 0
             for key, value in distribution.items():
                 cumulative_prob += value
                 if cumulative_prob >= perc:
-                    return key
+                    return key * mult_d
             return 0
         
-        cat_mult = 2 ** (category.quantity - 1)
+        if double_category_doubled:
+            cat_mult = 2 ** (category.quantity - 1)
+        else:
+            cat_mult = category.quantity
 
-        mult = (1 + fixed_mult + step_mult * j) * cat_mult 
-        
+        mult = (1 + fixed_mult + step_mult / 1.2 * j) * cat_mult 
         v1 = find_percentile(dist, bv1)
         v2 = find_percentile(dist, bv2)
-        total_score += math.floor( ( v1 + v2 ) * mult) / 2
+        if debug:
+            print(f"{category.name} {dist} {v1} {v2} {mult} {math.floor( ( v1 + v2 ) * mult / 2 )}")
+        total_score += math.floor( ( v1 + v2 ) * mult / 2 )
 
-    return max(5, total_score)
+    if recurse and total_score < 5:
+        return min(dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, double_category_doubled, 6, recurse=False), 5)
+    if recurse and total_score < 10:
+        return min(dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, double_category_doubled, 5, recurse=False), 10)
+    if recurse and total_score < 15:
+        return min(dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, double_category_doubled, 4, recurse=False), 15)
+    
+    return total_score
 
 
-def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, allowed_categories, difficulty):
+def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, allowed_categories, double_category_doubled, difficulty, debug=False):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a list, during filling of item pool.
@@ -137,11 +157,11 @@ def dice_simulation_fill_pool(state, frags_per_dice, frags_per_roll, allowed_cat
         state, "state_is_a_list", frags_per_dice, frags_per_roll, allowed_categories
     )
     return (
-        dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty) + expoints
+        dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, double_category_doubled, difficulty, debug=debug) + expoints
     )
 
 
-def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, allowed_categories, difficulty):
+def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, allowed_categories, double_category_doubled, difficulty):
     """
     Returns the feasible score that one can reach with the current state, options and difficulty.
     This function is called with state being a AP state object, while doing access rules.
@@ -153,14 +173,14 @@ def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, 
             state, player, frags_per_dice, frags_per_roll, allowed_categories
         )
         state.prog_items[player]["maximum_achievable_score"] = (
-            dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, difficulty)
+            dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, double_category_doubled, difficulty)
             + expoints
         )
 
     return state.prog_items[player]["maximum_achievable_score"]
 
 
-def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, allowed_categories, difficulty):
+def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, allowed_categories, double_category_doubled, difficulty):
     """
     Sets rules on reaching scores
     """
@@ -169,7 +189,7 @@ def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_ro
         set_rule(
             location,
             lambda state, curscore=location.yacht_dice_score, player=player: dice_simulation_state_change(
-                state, player, frags_per_dice, frags_per_roll, allowed_categories, difficulty
+                state, player, frags_per_dice, frags_per_roll, allowed_categories, double_category_doubled, difficulty
             )
             >= curscore,
         )
