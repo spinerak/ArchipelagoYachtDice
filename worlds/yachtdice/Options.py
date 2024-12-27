@@ -109,7 +109,7 @@ class AllowedNormalCategories(OptionSet):
     Normal categories that are allowed to appear.
     """
     display_name = "Allowed normal categories"
-    valid_keys = get_normal_categories().keys()
+    valid_keys = list(get_normal_categories().keys())
     default = valid_keys  
     
     
@@ -118,7 +118,7 @@ class AllowedAlternativeCategories(OptionSet):
     Alternative categories that are allowed to appear.
     """
     display_name = "Allowed alternative categories"
-    valid_keys = get_alt_categories().keys()
+    valid_keys = list(get_alt_categories().keys())
     default = valid_keys 
     
     
