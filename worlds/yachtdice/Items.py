@@ -47,10 +47,22 @@ all_categories = {
     "Category 2-1-2 Consecutive": (("", 1), 14.5),
     "Category Five Distinct Dice": (("", 1), 15.5),
     "Category 4&5 Full House": (("", 1), 16.5),
+    "Category Pair ∑": (("Category Pair", 1), 9.1),
+    "Category Three of a Kind ∑": (("Category Three of a Kind", 1), 10.1),
+    "Category Four of a Kind ∑": (("Category Four of a Kind", 1), 11.1),
+    "Category Tiny Straight ∑": (("Category Tiny Straight", 1), 12.1),
+    "Category Small Straight ∑": (("Category Small Straight", 1), 13.1),
+    "Category Large Straight ∑": (("Category Large Straight", 1), 14.1),
+    "Category Full House ∑": (("Category Full House", 1), 15.1),
+    "Category Yacht ∑": (("Category Yacht", 1), 16.1),
+    "Category Micro Straight ∑": (("Category Micro Straight", 1), 9.6),
+    "Category 1-2-1 Consecutive ∑": (("Category 1-2-1 Consecutive", 1), 11.6),
+    "Category Two Pair ∑": (("Category Two Pair", 1), 13.6),
+    "Category 2-1-2 Consecutive ∑": (("Category 2-1-2 Consecutive", 1), 14.6),
 }
 
-for i in range(3, 17):
-    all_categories[f"Category {i}x Ones"] = (("Category Ones", i), 2.5 + i * 0.0001)
+# for i in range(3, 17):
+#     all_categories[f"Category {i}x Ones"] = (("Category Ones", i), 2.5 + i * 0.0001)
 
 
 
@@ -87,6 +99,8 @@ item_table = {
     "1 Point": ItemData(16871244301, ItemClassification.progression_skip_balancing),
     "10 Points": ItemData(16871244302, ItemClassification.progression),
     "100 Points": ItemData(16871244303, ItemClassification.progression | ItemClassification.useful),
+    
+    "Key": ItemData(16871244304, ItemClassification.progression_skip_balancing),
 }
 
 for ind, cat in enumerate(all_categories):

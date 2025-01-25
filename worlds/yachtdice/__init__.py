@@ -64,7 +64,7 @@ class YachtDiceWorld(World):
 
     item_name_groups = item_groups
 
-    ap_world_version = "2.2.1"
+    ap_world_version = "2.2.2"
 
     def _get_yachtdice_data(self):
         return {
@@ -132,9 +132,6 @@ class YachtDiceWorld(World):
             # Pop from weights and all_candidate_categories before appending
             self.possible_categories.append(all_candidate_categories.pop(ind))
             weights.pop(ind)
-
-            
-        print(self.possible_categories)
         
         number_added = 0
         number_of_starting_categories = self.options.number_of_starting_categories.value
@@ -388,8 +385,9 @@ class YachtDiceWorld(World):
                         self.difficulty,
                     )
         
-        self.scores_in_logic = [f"{dice_simulation_fill_pool(self.itempool + self.precollected, self.frags_per_dice, self.frags_per_roll, self.possible_categories, self.double_category_doubled, d, debug=(d==self.difficulty))}{'*' if d == self.difficulty else ''}" for d in [1,2,3,4,5,6,7]]
+        self.scores_in_logic = [f"{dice_simulation_fill_pool(self.itempool + self.precollected, self.frags_per_dice, self.frags_per_roll, self.possible_categories, self.double_category_doubled, d)}{'*' if d == self.difficulty else ''}" for d in [1,2,3,4,5,6,7]]
 
+        self.itempool += ["Key"] * self.options.number_of_keys.value
         
 
         # count the number of locations in the game.
@@ -528,6 +526,7 @@ class YachtDiceWorld(World):
             self.possible_categories,
             self.double_category_doubled,
             self.difficulty,
+            self.options.number_of_keys.value
         )
         set_yacht_completion_rules(self.multiworld, self.player)
 
@@ -544,6 +543,9 @@ class YachtDiceWorld(World):
             "number_of_roll_fragments_per_roll",
             "which_story",
             "allow_manual_input",
+            "receive_death_link",
+            "send_death_link",
+            "number_of_keys"
         )
         slot_data = {**yacht_dice_data, **yacht_dice_options}  # combine the two
         slot_data["number_of_dice_fragments_per_dice"] = self.frags_per_dice
@@ -579,3 +581,4 @@ class YachtDiceWorld(World):
     
     def write_spoiler(self, spoiler_handle: TextIO) -> None:
         spoiler_handle.write(f"\nYacht Dice scores in logic for Player {self.player_name}: {self.scores_in_logic}\n")
+        spoiler_handle.write(f"\nYacht Dice items in pool for Player {self.player_name}: {self.itempool}\n")

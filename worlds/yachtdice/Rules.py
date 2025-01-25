@@ -136,13 +136,13 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
         v2 = find_percentile(dist, bv2)
         if debug:
             print(f"{category.name} {dist} {v1} {v2} {mult} {math.floor( ( v1 + v2 ) * mult / 2 )}")
-        total_score += math.floor( ( v1 + v2 ) * mult / 2 )
+        total_score += math.floor( ( v1 + v2 ) * mult / 2 )        
 
-    if recurse and total_score < 5:
+    if recurse and total_score < 5 and diff < 6:
         return min(dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, double_category_doubled, 6, recurse=False), 5)
-    if recurse and total_score < 10:
+    if recurse and total_score < 10 and diff < 5:
         return min(dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, double_category_doubled, 5, recurse=False), 10)
-    if recurse and total_score < 15:
+    if recurse and total_score < 15 and diff < 4:
         return min(dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mult, double_category_doubled, 4, recurse=False), 15)
     
     return total_score
@@ -180,7 +180,7 @@ def dice_simulation_state_change(state, player, frags_per_dice, frags_per_roll, 
     return state.prog_items[player]["maximum_achievable_score"]
 
 
-def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, allowed_categories, double_category_doubled, difficulty):
+def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_roll, allowed_categories, double_category_doubled, difficulty, number_of_keys):
     """
     Sets rules on reaching scores
     """
@@ -188,7 +188,9 @@ def set_yacht_rules(world: MultiWorld, player: int, frags_per_dice, frags_per_ro
     for location in world.get_locations(player):
         set_rule(
             location,
-            lambda state, curscore=location.yacht_dice_score, player=player: dice_simulation_state_change(
+            lambda state, curscore=location.yacht_dice_score, player=player: 
+            state.has("Key", player, number_of_keys) and
+            dice_simulation_state_change(
                 state, player, frags_per_dice, frags_per_roll, allowed_categories, double_category_doubled, difficulty
             )
             >= curscore,

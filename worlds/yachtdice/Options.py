@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from .Items import all_categories, get_normal_categories, get_alt_categories
-from Options import Choice, OptionGroup, OptionSet, PerGameCommonOptions, Range, Visibility
+from Options import Choice, DeathLink, OptionGroup, OptionSet, PerGameCommonOptions, Range, Visibility
 
 
 class GameDifficulty(Choice):
@@ -361,6 +361,38 @@ class IncludeScores(OptionSet):
     display_name = "Guaranteed included scores as locations"
     valid_keys = [str(i) for i in range(1,1001)] + ['Everything']
     default = ['1']
+    
+class ReceiveDeathLink(Choice):
+    """
+    With this option on, your current game will be reset when someone else in the multiworld dies.
+    """
+    display_name = "Receive death link"
+    option_no = 1
+    option_yes = 2
+    default = 1
+    
+class SendDeathLink(Choice):
+    """
+    With this option on, other players with deathlink will die when you put a "0" in one of the categories.
+    Instead of putting a 0, you can just reset your game and the other players will be fine.
+    So, this deathlink is very much preventable if you pay attention not to put a 0.
+    When you put a 0, your own game will be reset as well.
+    """
+    display_name = "Send death link"
+    option_no = 1
+    option_yes = 2
+    default = 1
+    
+class NumberOfKeys(Range):
+    """
+    Add this many keys to the itempool. You need *all* keys to be able to do anything in the game.
+    """
+    visibility = Visibility.none
+    display_name = "Number of keys"
+    range_start = 0
+    range_end = 100
+    default = 0
+    
 
 
 @dataclass
@@ -399,6 +431,11 @@ class YachtDiceOptions(PerGameCommonOptions):
     which_story: WhichStory
     
     include_scores: IncludeScores
+    
+    receive_death_link: ReceiveDeathLink
+    send_death_link: SendDeathLink
+    
+    number_of_keys: NumberOfKeys
 
 
 yd_option_groups = [
@@ -433,7 +470,7 @@ yd_option_groups = [
             MinimizeExtraItems, 
             AddExtraPoints, 
             AddStoryChapters, 
-            WhichStory
+            WhichStory,
         ],
     ),
     OptionGroup(
@@ -441,6 +478,9 @@ yd_option_groups = [
         [
             IncludeScores,
             AllowManual,
+            ReceiveDeathLink,
+            SendDeathLink,
+            NumberOfKeys
         ]
     )
 ]
