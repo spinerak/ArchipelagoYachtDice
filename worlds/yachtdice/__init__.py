@@ -16,7 +16,6 @@ from .Options import (
     PercentageAlternativeCategories,
     AllowedStartingCategories,
     NumberOfStartingCategories,
-    FillStartInventoryIfNeeded,
     GameDifficulty,
     MinimalNumberOfDiceAndRolls,
     MinimizeExtraItems,
@@ -164,7 +163,6 @@ class YachtDiceWorld(World):
             else:
                 self.itempool.append(cat)
 
-
         # Also start with one Roll and one Dice
         self.precollected.append("Dice")
         num_of_dice_to_add = num_of_dice - 1
@@ -216,7 +214,9 @@ class YachtDiceWorld(World):
         self.max_score = self.options.score_for_last_check.value
         self.goal_score = min(self.max_score, self.options.score_for_goal.value)
         
-        if self.options.fill_start_inventory_if_needed == FillStartInventoryIfNeeded.option_on:
+        
+        
+        if self.options.fill_start_inventory_if_needed:
             c = 0
             while(dice_simulation_fill_pool(
                     self.precollected,
@@ -257,6 +257,8 @@ class YachtDiceWorld(World):
 
         extra_points_added = [0]  # make it a mutible type so we can change the value in the function
         step_score_multipliers_added = [0]
+        
+        
 
         def get_item_to_add(weights, extra_points_added, step_score_multipliers_added):
             all_items = self.itempool + self.precollected
@@ -389,6 +391,8 @@ class YachtDiceWorld(World):
 
         self.itempool += ["Key"] * self.options.number_of_keys.value
         
+        
+        
 
         # count the number of locations in the game.
         already_items = len(self.itempool) + 1  # +1 because of Victory item
@@ -454,6 +458,7 @@ class YachtDiceWorld(World):
                 f"{already_items} {self.number_of_locations}."
             )
 
+        
         # add precollected items using push_precollected. Items in self.itempool get created in create_items
         for item in self.precollected:
             self.multiworld.push_precollected(self.create_item(item))

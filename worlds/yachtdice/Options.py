@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from .Items import all_categories, get_normal_categories, get_alt_categories
-from Options import Choice, DeathLink, OptionGroup, OptionSet, PerGameCommonOptions, Range, Visibility
+from Options import Choice, DeathLink, OptionGroup, OptionSet, PerGameCommonOptions, Range, Toggle, Visibility
 
 
 class GameDifficulty(Choice):
@@ -152,7 +152,7 @@ class NumberOfStartingCategories(Range):
     default = 2
 
 
-class FillStartInventoryIfNeeded(Choice):
+class FillStartInventoryIfNeeded(Toggle):
     """
     Hidden option.
     If you only pick categories that need many dice or rolls, you might get stuck early on.
@@ -161,9 +161,7 @@ class FillStartInventoryIfNeeded(Choice):
     """
     visibility = Visibility.none
     display_name = "Fill start inventory if needed"
-    option_on = 1
-    option_off = 2
-    default = 1
+    default = True
     
 
 class ChanceOfDice(Range):
@@ -362,16 +360,14 @@ class IncludeScores(OptionSet):
     valid_keys = [str(i) for i in range(1,1001)] + ['Everything']
     default = ['1']
     
-class ReceiveDeathLink(Choice):
+class ReceiveDeathLink(Toggle):
     """
     With this option on, your current game will be reset when someone else in the multiworld dies.
     """
     display_name = "Receive death link"
-    option_no = 1
-    option_yes = 2
-    default = 1
+    default = False
     
-class SendDeathLink(Choice):
+class SendDeathLink(Toggle):
     """
     With this option on, other players with deathlink will die when you put a "0" in one of the categories.
     Instead of putting a 0, you can just reset your game and the other players will be fine.
@@ -379,9 +375,7 @@ class SendDeathLink(Choice):
     When you put a 0, your own game will be reset as well.
     """
     display_name = "Send death link"
-    option_no = 1
-    option_yes = 2
-    default = 1
+    default = False
     
 class NumberOfKeys(Range):
     """
@@ -392,6 +386,16 @@ class NumberOfKeys(Range):
     range_start = 0
     range_end = 100
     default = 0
+    
+class Async1024(Toggle):
+    """
+    Only for 1024 async stuff.
+    """
+    visibility = Visibility.none
+    display_name = "Async 1024"
+    option_false = 1
+    option_true = 2
+    default = 1
     
 
 
@@ -436,6 +440,7 @@ class YachtDiceOptions(PerGameCommonOptions):
     send_death_link: SendDeathLink
     
     number_of_keys: NumberOfKeys
+    async_1024: Async1024
 
 
 yd_option_groups = [
@@ -480,7 +485,8 @@ yd_option_groups = [
             AllowManual,
             ReceiveDeathLink,
             SendDeathLink,
-            NumberOfKeys
+            NumberOfKeys,
+            Async1024
         ]
     )
 ]
