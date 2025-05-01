@@ -1,7 +1,7 @@
 import math
-from typing import Dict, TextIO
+from typing import Dict, TextIO, List
 
-from BaseClasses import CollectionState, Entrance, Item, ItemClassification, Region, Tutorial
+from BaseClasses import CollectionState, Entrance, Item, ItemClassification, MultiWorld, Region, Tutorial
 
 from worlds.AutoWorld import WebWorld, World
 
@@ -24,6 +24,7 @@ from .Options import (
     DoubleCategoryCalculation,
     yd_option_groups,
 )
+from Fill import remaining_fill
 from .Rules import dice_simulation_fill_pool, set_yacht_completion_rules, set_yacht_rules
 
 
@@ -444,11 +445,15 @@ class YachtDiceWorld(World):
         # these items are filler and do not do anything.
 
         # probability of Good and Bad rng, based on difficulty for fun :)
-        p = max(0.2, 1.1 - 0.2 * self.difficulty)  # it's fine if weights become negative
+        p = min(1, max(0.2, 1.1 - 0.2 * self.difficulty))
         already_items = len(self.itempool) + 1
-        self.itempool += self.random.choices(
-            ["Good RNG", "Bad RNG"], weights=[p, 1 - p], k=self.number_of_locations - already_items
-        )
+        
+        number_of_RNG_items = self.number_of_locations - already_items
+        
+        num_good_rng = round(number_of_RNG_items * p)
+        num_bad_rng = number_of_RNG_items - num_good_rng
+        self.itempool += ["Good RNG"] * num_good_rng
+        self.itempool += ["Bad RNG"] * num_bad_rng
 
         # we are done adding items. Now because of the last step, number of items should be number of locations
         already_items = len(self.itempool) + 1
@@ -479,14 +484,42 @@ class YachtDiceWorld(World):
             self.options.include_scores.value
         )
         
+        number_of_RNG_items = len(self.score_locations) - len(self.itempool) - 1
+        
         # there should be exactly one more location than items (because of Victory event)
-        if len(self.score_locations) > len(self.itempool) - 1:
-            self.itempool += self.random.choices(
-                ["Good RNG", "Bad RNG"], weights=[p, 1 - p], k=len(self.score_locations) - len(self.itempool) - 1
+        if number_of_RNG_items > 0:
+            self.num_good_rng = round(number_of_RNG_items * p)
+            self.num_bad_rng = number_of_RNG_items - self.num_good_rng
+            self.itempool += ["Good RNG"] * self.num_good_rng
+            self.itempool += ["Bad RNG"] * self.num_bad_rng
+            
+    
+    def pre_fill(self) -> None:
+        # if there's more players and many filler items, force these items in local, 
+        if self.multiworld.players > 1 and len(self.force_local_items) > 0:
+            locations = self.multiworld.get_unfilled_locations(self.player)
+            self.random.shuffle(locations)
+            remaining_fill(
+                self.multiworld,
+                locations,
+                self.force_local_items
             )
 
+        
+
     def create_items(self):
-        self.multiworld.itempool += [self.create_item(name) for name in self.itempool]
+        self.force_local_items = []
+        
+        for name in self.itempool:
+            item = self.create_item(name)
+            if self.multiworld.players > 1 and name == "Good RNG" and self.num_good_rng > 100:  # force local
+                self.force_local_items.append(item)
+                self.num_good_rng -= 1
+            elif self.multiworld.players > 1 and name == "Bad RNG" and self.num_bad_rng > 100:  # force local
+                self.force_local_items.append(item)
+                self.num_bad_rng -= 1
+            else:
+                self.multiworld.itempool.append(item)
 
     def create_regions(self):
         
