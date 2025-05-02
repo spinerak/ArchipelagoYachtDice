@@ -360,6 +360,17 @@ class IncludeScores(OptionSet):
     valid_keys = [str(i) for i in range(1,1001)] + ['Everything']
     default = ['1']
     
+class MaximumRNGInItempool(Range):
+    """
+    When you add many or all scores in the above option, the item pool will be filled with many filler "RNG" items.
+    This option determines the maximum number of filler items in the item pool and possibly put in other worlds.
+    """
+
+    display_name = "Maximum RNG In Itempool"
+    range_start = 0
+    range_end = 1000
+    default = 50
+    
 class ReceiveDeathLink(Toggle):
     """
     With this option on, your current game will be reset when someone else in the multiworld dies.
@@ -385,18 +396,7 @@ class NumberOfKeys(Range):
     display_name = "Number of keys"
     range_start = 0
     range_end = 100
-    default = 0
-    
-class Async1024(Toggle):
-    """
-    Only for 1024 async stuff.
-    """
-    visibility = Visibility.none
-    display_name = "Async 1024"
-    option_false = 1
-    option_true = 2
-    default = 1
-    
+    default = 0   
 
 
 @dataclass
@@ -435,12 +435,12 @@ class YachtDiceOptions(PerGameCommonOptions):
     which_story: WhichStory
     
     include_scores: IncludeScores
+    maximum_rng_in_itempool: MaximumRNGInItempool
     
-    receive_death_link: ReceiveDeathLink
-    send_death_link: SendDeathLink
+    receive_death_link_toggle: ReceiveDeathLink
+    send_death_link_toggle: SendDeathLink
     
     number_of_keys: NumberOfKeys
-    async_1024: Async1024
 
 
 yd_option_groups = [
@@ -482,11 +482,11 @@ yd_option_groups = [
         "Misc",
         [
             IncludeScores,
+            MaximumRNGInItempool,
             AllowManual,
             ReceiveDeathLink,
             SendDeathLink,
             NumberOfKeys,
-            Async1024
         ]
     )
 ]

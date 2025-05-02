@@ -61,11 +61,6 @@ all_categories = {
     "Category 2-1-2 Consecutive ∑": (("Category 2-1-2 Consecutive", 1), 14.6),
 }
 
-# for i in range(3, 17):
-#     all_categories[f"Category {i}x Ones"] = (("Category Ones", i), 2.5 + i * 0.0001)
-
-
-
 
 def find_category_index(category):
     return all_categories[category][1]

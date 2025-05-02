@@ -89,7 +89,7 @@ def ini_locations(goal_score, max_score, number_of_locations, dif, skip_early_lo
             else:
                 scores.append(value)  # If no candidates remain, just add the value to scores
 
-    return scores
+    return sorted(scores)
 
 
 # we need to run this function to initialize all scores from 1 to 1000, even though not all are used

@@ -64,7 +64,7 @@ class YachtDiceWorld(World):
 
     item_name_groups = item_groups
 
-    ap_world_version = "2.2.2"
+    ap_world_version = "2.2.3"
 
     def _get_yachtdice_data(self):
         return {
@@ -124,13 +124,30 @@ class YachtDiceWorld(World):
         weight_alt = self.options.percentage_alternative_categories.value + 0.000000001
         
         all_candidate_categories = normal_categories + alternative_categories
+        
+        if not all_candidate_categories or number_of_categories < 1:
+            all_candidate_categories = list(all_categories.keys())
+            normal_categories = list(get_normal_categories().keys())
+            alternative_categories = list(get_alt_categories().keys())
+            number_of_categories = 16
+                
         weights = [weight_normal] * len(normal_categories) + [weight_alt] * len(alternative_categories)
+        for i, cat in enumerate(all_candidate_categories):
+            if cat in self.options.allowed_starting_categories.value:
+                weights[i] *= 1000000
 
+        starting_categories_1 = 0
         self.possible_categories = []
         for _ in range(number_of_categories):
             ind = self.random.choices(range(len(weights)), weights=weights)[0]
             # Pop from weights and all_candidate_categories before appending
             self.possible_categories.append(all_candidate_categories.pop(ind))
+            if weights[ind] > 1000:
+                starting_categories_1 += 1
+                if starting_categories_1 == self.options.number_of_starting_categories.value:
+                    for i in range(len(weights)):
+                        if weights[i] > 1000:
+                            weights[i] /= 1000000
             weights.pop(ind)
         
         number_added = 0
@@ -493,36 +510,22 @@ class YachtDiceWorld(World):
             self.itempool += ["Good RNG"] * self.num_good_rng
             self.itempool += ["Bad RNG"] * self.num_bad_rng
             
-    
-    def pre_fill(self) -> None:
-        # if there's more players and many filler items, force these items in local, 
-        if self.multiworld.players > 1 and len(self.force_local_items) > 0:
-            locations = self.multiworld.get_unfilled_locations(self.player)
-            self.random.shuffle(locations)
-            remaining_fill(
-                self.multiworld,
-                locations,
-                self.force_local_items
-            )
+            
 
-        
-
-    def create_items(self):
-        self.force_local_items = []
-        
+    def create_items(self):     
+        num_rng_in_pool = 0
+        self.lock_locally = []  # items that are locked locally, so they don't get added to the item pool
         for name in self.itempool:
-            item = self.create_item(name)
-            if self.multiworld.players > 1 and name == "Good RNG" and self.num_good_rng > 100:  # force local
-                self.force_local_items.append(item)
-                self.num_good_rng -= 1
-            elif self.multiworld.players > 1 and name == "Bad RNG" and self.num_bad_rng > 100:  # force local
-                self.force_local_items.append(item)
-                self.num_bad_rng -= 1
-            else:
-                self.multiworld.itempool.append(item)
+            if name == "Good RNG" or name == "Bad RNG":
+                num_rng_in_pool += 1
+                if num_rng_in_pool > self.options.maximum_rng_in_itempool.value:
+                    self.lock_locally.append(self.create_item(name))
+                else:
+                    self.multiworld.itempool.append(self.create_item(name))
+            else:  
+                self.multiworld.itempool.append(self.create_item(name))
 
     def create_regions(self):
-        
         location_table = {f"{score} score": LocData(starting_index + score, "Board", score) for score in self.score_locations}
 
         # simple menu-board construction
@@ -535,7 +538,7 @@ class YachtDiceWorld(World):
             for loc_name, loc_data in location_table.items()
             if loc_data.region == board.name
         ]
-
+                
         # Change the victory location to an event and place the Victory item there.
         victory_location_name = f"{self.goal_score} score"
         self.get_location(victory_location_name).address = None
@@ -543,11 +546,24 @@ class YachtDiceWorld(World):
             Item("Victory", ItemClassification.progression, None, self.player)
         )
 
+        # Randomly select self.lock_locally items from board.locations excluding the victory location
+        self.available_locations = [
+            loc for loc in board.locations if loc.name != victory_location_name
+        ]
+
         # add the regions
         connection = Entrance(self.player, "New Board", menu)
         menu.exits.append(connection)
         connection.connect(board)
         self.multiworld.regions += [menu, board]
+        
+    def pre_fill(self) -> None:
+        weights = [(i + 1) * (10000 if i > 10 else 1) for i in range(len(self.available_locations))]
+        for item in self.lock_locally:
+            location = self.random.choices(self.available_locations, weights=weights, k=1)[0]
+            weights.remove(weights[self.available_locations.index(location)])
+            self.available_locations.remove(location)
+            location.place_locked_item(item)
 
     def get_filler_item_name(self) -> str:
         return "Good RNG"
@@ -581,8 +597,8 @@ class YachtDiceWorld(World):
             "number_of_roll_fragments_per_roll",
             "which_story",
             "allow_manual_input",
-            "receive_death_link",
-            "send_death_link",
+            "receive_death_link_toggle",
+            "send_death_link_toggle",
             "number_of_keys"
         )
         slot_data = {**yacht_dice_data, **yacht_dice_options}  # combine the two
