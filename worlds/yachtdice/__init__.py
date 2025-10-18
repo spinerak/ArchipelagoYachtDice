@@ -25,7 +25,7 @@ from .Options import (
     yd_option_groups,
 )
 from Fill import remaining_fill
-from .Rules import dice_simulation_fill_pool, set_yacht_completion_rules, set_yacht_rules
+from .Rules import Category, dice_simulation_fill_pool, set_yacht_completion_rules, set_yacht_rules, dice_simulation_strings
 
 
 class YachtDiceWeb(WebWorld):
@@ -64,7 +64,7 @@ class YachtDiceWorld(World):
 
     item_name_groups = item_groups
 
-    ap_world_version = "2.2.3"
+    ap_world_version = "2.2.4"
 
     def _get_yachtdice_data(self):
         return {
@@ -74,8 +74,27 @@ class YachtDiceWorld(World):
             "player_id": self.player,
             "race": self.multiworld.is_race,
         }
+               
+    # print(
+    #     dice_simulation_strings(
+    #         [
+    #             Category('Category Fives', 4),
+    #             Category('Category Small Straight', 1),
+    #             Category('Category Pair', 1),
+    #             Category('Category Full House', 1),
+    #         ], 
+    #         3, 
+    #         2, 
+    #         0.1, 
+    #         0.04, 
+    #         True, 
+    #         3,
+    #         debug=True
+    #     )
+    # )
+    # exit() 
 
-    def generate_early(self):        
+    def generate_early(self):             
         """
         In generate early, we fill the item-pool, then determine the number of locations, and add filler items.
         """
@@ -524,6 +543,13 @@ class YachtDiceWorld(World):
                     self.multiworld.itempool.append(self.create_item(name))
             else:  
                 self.multiworld.itempool.append(self.create_item(name))
+        
+        weights = [(i + 1) * (10000 if i > 10 else 1) for i in range(len(self.available_locations))]
+        for item in self.lock_locally:
+            location = self.random.choices(self.available_locations, weights=weights, k=1)[0]
+            weights.remove(weights[self.available_locations.index(location)])
+            self.available_locations.remove(location)
+            location.place_locked_item(item)
 
     def create_regions(self):
         location_table = {f"{score} score": LocData(starting_index + score, "Board", score) for score in self.score_locations}
@@ -556,14 +582,6 @@ class YachtDiceWorld(World):
         menu.exits.append(connection)
         connection.connect(board)
         self.multiworld.regions += [menu, board]
-        
-    def pre_fill(self) -> None:
-        weights = [(i + 1) * (10000 if i > 10 else 1) for i in range(len(self.available_locations))]
-        for item in self.lock_locally:
-            location = self.random.choices(self.available_locations, weights=weights, k=1)[0]
-            weights.remove(weights[self.available_locations.index(location)])
-            self.available_locations.remove(location)
-            location.place_locked_item(item)
 
     def get_filler_item_name(self) -> str:
         return "Good RNG"

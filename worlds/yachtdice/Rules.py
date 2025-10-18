@@ -102,7 +102,7 @@ def dice_simulation_strings(categories, num_dice, num_rolls, fixed_mult, step_mu
     # sort categories because for the step multiplier, you will want low-scoring categories first
     # to avoid errors with order changing when obtaining rolls, we order assuming 4 rolls
     if step_mult > 0:
-        categories.sort(key=lambda category: category.mean_score(min(8, num_dice), 4))
+        categories.sort(key=lambda category: category.mean_score(6, 4))
 
     total_score = 0
     bv1 = border_values[diff][0]
@@ -202,3 +202,4 @@ def set_yacht_completion_rules(world: MultiWorld, player: int):
     Sets rules on completion condition
     """
     world.completion_condition[player] = lambda state: state.has("Victory", player)
+
