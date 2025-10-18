@@ -28,7 +28,7 @@ def all_locations_fun(max_score):
     return {f"{i} score": LocData(starting_index + i, "Board", i) for i in range(1, max_score + 1)}
 
 
-def ini_locations(goal_score, max_score, number_of_locations, dif, skip_early_locations, number_of_players):
+def ini_locations(goal_score, max_score, number_of_locations, dif, skip_early_locations, number_of_players, include_scores):
     """
     function that loads in all locations necessary for the game, so based on options.
     will make sure that goal_score and max_score are included locations
@@ -52,7 +52,7 @@ def ini_locations(goal_score, max_score, number_of_locations, dif, skip_early_lo
     if skip_early_locations:
         scaling = 1.95
         if number_of_players > 2:
-            scaling = max(1.2, 2.2 - number_of_players * 0.1)
+            scaling = max(1.3, 2.2 - number_of_players * 0.1)
 
     for i in range(number_of_locations - 1):
         percentage = i / number_of_locations
@@ -69,10 +69,27 @@ def ini_locations(goal_score, max_score, number_of_locations, dif, skip_early_lo
             scores[scores.index(closest_num)] = goal_score
 
     scores += [max_score]
+    
+    if 'Everything' in include_scores:
+        include_scores = [str(i) for i in range(1, max_score)]
+    
+    # Adjust scores to include the values in the "include" list
+    include_scores = [int(value) for value in sorted(include_scores)]
+    for value in include_scores:
+        if value not in scores and value < max_score:
+            # Exclude goal_score, max_score, and already included values from search
+            candidate_scores = [s for s in scores if s not in (goal_score, max_score) and s not in include_scores]
+            
+            if candidate_scores:  # If there are candidates to replace
+                closest_num = min(candidate_scores, key=lambda x: abs(x - value))
+                if abs(closest_num - value) < 100:  # only adjust score if it's close enough
+                    scores[scores.index(closest_num)] = value  # Replace the closest candidate with the desired value
+                else:
+                    scores.append(value)
+            else:
+                scores.append(value)  # If no candidates remain, just add the value to scores
 
-    location_table = {f"{score} score": LocData(starting_index + score, "Board", score) for score in scores}
-
-    return location_table
+    return sorted(scores)
 
 
 # we need to run this function to initialize all scores from 1 to 1000, even though not all are used

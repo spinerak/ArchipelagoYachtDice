@@ -10,6 +10,66 @@ class ItemData(typing.NamedTuple):
 
 class YachtDiceItem(Item):
     game: str = "Yacht Dice"
+    
+    
+    
+# A list of all possible categories.
+all_categories = {
+    "Category Ones": (("", 1), 1),
+    "Category Twos": (("Category Ones", 2), 2),
+    "Category Threes": (("Category Ones", 3), 3),
+    "Category Fours": (("Category Ones", 4), 4),
+    "Category Fives": (("Category Ones", 5), 5),
+    "Category Sixes": (("Category Ones", 6), 6),
+    "Category Choice": (("", 1), 7),
+    "Category Inverse Choice": (("Category Choice", 1), 8),
+    "Category Pair": (("", 1), 9),
+    "Category Three of a Kind": (("", 1), 10),
+    "Category Four of a Kind": (("", 1), 11),
+    "Category Tiny Straight": (("", 1), 12),
+    "Category Small Straight": (("", 1), 13),
+    "Category Large Straight": (("", 1), 14),
+    "Category Full House": (("", 1), 15),
+    "Category Yacht": (("", 1), 16),
+    "Category Distincts": (("", 1), 1.5),
+    "Category Two times Ones": (("Category Ones", 2), 2.5),
+    "Category Half of Sixes": (("Category Ones", 3), 3.5),
+    "Category Twos and Threes": (("", 1), 4.5),
+    "Category Sum of Odds": (("", 1), 5.5),
+    "Category Sum of Evens": (("", 1), 6.5),
+    "Category Double Threes and Fours": (("", 1), 7.5),
+    "Category Quadruple Ones and Twos": (("", 1), 8.5),
+    "Category Micro Straight": (("", 1), 9.5),
+    "Category Three Odds": (("", 1), 10.5),
+    "Category 1-2-1 Consecutive": (("", 1), 11.5),
+    "Category Three Distinct Dice": (("", 1), 12.5),
+    "Category Two Pair": (("", 1), 13.5),
+    "Category 2-1-2 Consecutive": (("", 1), 14.5),
+    "Category Five Distinct Dice": (("", 1), 15.5),
+    "Category 4&5 Full House": (("", 1), 16.5),
+    "Category Pair ∑": (("Category Pair", 1), 9.1),
+    "Category Three of a Kind ∑": (("Category Three of a Kind", 1), 10.1),
+    "Category Four of a Kind ∑": (("Category Four of a Kind", 1), 11.1),
+    "Category Tiny Straight ∑": (("Category Tiny Straight", 1), 12.1),
+    "Category Small Straight ∑": (("Category Small Straight", 1), 13.1),
+    "Category Large Straight ∑": (("Category Large Straight", 1), 14.1),
+    "Category Full House ∑": (("Category Full House", 1), 15.1),
+    "Category Yacht ∑": (("Category Yacht", 1), 16.1),
+    "Category Micro Straight ∑": (("Category Micro Straight", 1), 9.6),
+    "Category 1-2-1 Consecutive ∑": (("Category 1-2-1 Consecutive", 1), 11.6),
+    "Category Two Pair ∑": (("Category Two Pair", 1), 13.6),
+    "Category 2-1-2 Consecutive ∑": (("Category 2-1-2 Consecutive", 1), 14.6),
+}
+
+
+def find_category_index(category):
+    return all_categories[category][1]
+
+def get_normal_categories():
+    return {key: value for key, value in all_categories.items() if isinstance(value[1], int)}
+    
+def get_alt_categories():
+    return {key: value for key, value in all_categories.items() if not isinstance(value[1], int)}
 
 
 # the starting index is chosen semi-randomly to be 16871244000
@@ -22,38 +82,7 @@ item_table = {
     "Roll Fragment": ItemData(16871244003, ItemClassification.progression),
     "Fixed Score Multiplier": ItemData(16871244005, ItemClassification.progression),
     "Step Score Multiplier": ItemData(16871244006, ItemClassification.progression),
-    "Category Ones": ItemData(16871244103, ItemClassification.progression),
-    "Category Twos": ItemData(16871244104, ItemClassification.progression),
-    "Category Threes": ItemData(16871244105, ItemClassification.progression),
-    "Category Fours": ItemData(16871244106, ItemClassification.progression),
-    "Category Fives": ItemData(16871244107, ItemClassification.progression),
-    "Category Sixes": ItemData(16871244108, ItemClassification.progression),
-    "Category Choice": ItemData(16871244109, ItemClassification.progression),
-    "Category Inverse Choice": ItemData(16871244110, ItemClassification.progression),
-    "Category Pair": ItemData(16871244111, ItemClassification.progression),
-    "Category Three of a Kind": ItemData(16871244112, ItemClassification.progression),
-    "Category Four of a Kind": ItemData(16871244113, ItemClassification.progression),
-    "Category Tiny Straight": ItemData(16871244114, ItemClassification.progression),
-    "Category Small Straight": ItemData(16871244115, ItemClassification.progression),
-    "Category Large Straight": ItemData(16871244116, ItemClassification.progression),
-    "Category Full House": ItemData(16871244117, ItemClassification.progression),
-    "Category Yacht": ItemData(16871244118, ItemClassification.progression),
-    "Category Distincts": ItemData(16871244123, ItemClassification.progression),
-    "Category Two times Ones": ItemData(16871244124, ItemClassification.progression),
-    "Category Half of Sixes": ItemData(16871244125, ItemClassification.progression),
-    "Category Twos and Threes": ItemData(16871244126, ItemClassification.progression),
-    "Category Sum of Odds": ItemData(16871244127, ItemClassification.progression),
-    "Category Sum of Evens": ItemData(16871244128, ItemClassification.progression),
-    "Category Double Threes and Fours": ItemData(16871244129, ItemClassification.progression),
-    "Category Quadruple Ones and Twos": ItemData(16871244130, ItemClassification.progression),
-    "Category Micro Straight": ItemData(16871244131, ItemClassification.progression),
-    "Category Three Odds": ItemData(16871244132, ItemClassification.progression),
-    "Category 1-2-1 Consecutive": ItemData(16871244133, ItemClassification.progression),
-    "Category Three Distinct Dice": ItemData(16871244134, ItemClassification.progression),
-    "Category Two Pair": ItemData(16871244135, ItemClassification.progression),
-    "Category 2-1-2 Consecutive": ItemData(16871244136, ItemClassification.progression),
-    "Category Five Distinct Dice": ItemData(16871244137, ItemClassification.progression),
-    "Category 4&5 Full House": ItemData(16871244138, ItemClassification.progression),
+    # categories are added below
     # filler items
     "Encouragement": ItemData(16871244200, ItemClassification.filler),
     "Fun Fact": ItemData(16871244201, ItemClassification.filler),
@@ -65,7 +94,12 @@ item_table = {
     "1 Point": ItemData(16871244301, ItemClassification.progression_skip_balancing),
     "10 Points": ItemData(16871244302, ItemClassification.progression),
     "100 Points": ItemData(16871244303, ItemClassification.progression | ItemClassification.useful),
+    
+    "Key": ItemData(16871244304, ItemClassification.progression_skip_balancing),
 }
+
+for ind, cat in enumerate(all_categories):
+    item_table[cat] = ItemData(16871244400 + ind, ItemClassification.progression)
 
 # item groups for better hinting
 item_groups = {
@@ -73,40 +107,7 @@ item_groups = {
         "Step Score Multiplier", 
         "Fixed Score Multiplier"
     },
-    "Categories": {
-        "Category Ones",
-        "Category Twos",
-        "Category Threes",
-        "Category Fours",
-        "Category Fives",
-        "Category Sixes",
-        "Category Choice",
-        "Category Inverse Choice",
-        "Category Pair",
-        "Category Three of a Kind",
-        "Category Four of a Kind",
-        "Category Tiny Straight",
-        "Category Small Straight",
-        "Category Large Straight",
-        "Category Full House",
-        "Category Yacht",
-        "Category Distincts",
-        "Category Two times Ones",
-        "Category Half of Sixes",
-        "Category Twos and Threes",
-        "Category Sum of Odds",
-        "Category Sum of Evens",
-        "Category Double Threes and Fours",
-        "Category Quadruple Ones and Twos",
-        "Category Micro Straight",
-        "Category Three Odds",
-        "Category 1-2-1 Consecutive",
-        "Category Three Distinct Dice",
-        "Category Two Pair",
-        "Category 2-1-2 Consecutive",
-        "Category Five Distinct Dice",
-        "Category 4&5 Full House",
-    },
+    "Categories": all_categories,
     "Points": {
         "100 Points", 
         "10 Points", 
