@@ -136,6 +136,8 @@ class PercentageAlternativeCategories(Range):
 class AllowedStartingCategories(OptionSet):
     """
     Set of categories that may appear as starting categories.
+    Leave this empty to have randomly selected starting categories.
+    If this list is smaller than the number of starting categories you want, random categories are added as starting.
     """
     display_name = "Allowed starting categories"
     valid_keys = all_categories
@@ -355,6 +357,7 @@ class IncludeScores(OptionSet):
     Note that if you put many scores here, there will be many filler items too.
     You can put numbers 1 up to (including) 1000. Note that scores above last check don't count.
     You can also add 'Everything' to the list, which adds all possible scores to the pool (up to last check).
+    Note: only the first 10 entries in your list are considered ('Everything' adds all scores anyway though).
     """
     display_name = "Guaranteed included scores as locations"
     valid_keys = [str(i) for i in range(1,1001)] + ['Everything']
@@ -413,8 +416,8 @@ class YachtDiceOptions(PerGameCommonOptions):
     allowed_normal_categories: AllowedNormalCategories
     allowed_alternative_categories: AllowedAlternativeCategories
     percentage_alternative_categories: PercentageAlternativeCategories
-    allowed_starting_categories: AllowedStartingCategories
     number_of_starting_categories: NumberOfStartingCategories
+    allowed_starting_categories: AllowedStartingCategories
     fill_start_inventory_if_needed: FillStartInventoryIfNeeded
 
     allow_manual_input: AllowManual

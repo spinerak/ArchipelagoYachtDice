@@ -72,6 +72,8 @@ def ini_locations(goal_score, max_score, number_of_locations, dif, skip_early_lo
     
     if 'Everything' in include_scores:
         include_scores = [str(i) for i in range(1, max_score)]
+    else:
+        include_scores = sorted({int(x) for x in include_scores})[:10]
     
     # Adjust scores to include the values in the "include" list
     include_scores = [int(value) for value in sorted(include_scores)]

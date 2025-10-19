@@ -64,8 +64,6 @@ class YachtDiceWorld(World):
 
     item_name_groups = item_groups
 
-    ap_world_version = "2.2.4"
-
     def _get_yachtdice_data(self):
         return {
             # "world_seed": self.multiworld.per_slot_randoms[self.player].getrandbits(32),
@@ -134,71 +132,59 @@ class YachtDiceWorld(World):
         self.difficulty = self.options.game_difficulty.value
         self.double_category_doubled = (self.options.double_category_calculation == DoubleCategoryCalculation.option_double)
         
+        # which categories to use?
         normal_categories = sorted(self.options.allowed_normal_categories.value)
         alternative_categories = sorted(self.options.allowed_alternative_categories.value)
-        
-        number_of_categories = min(len(normal_categories) + len(alternative_categories), self.options.total_number_of_categories.value)
-        
-        weight_normal = 100 - self.options.percentage_alternative_categories.value + 0.000000001
-        weight_alt = self.options.percentage_alternative_categories.value + 0.000000001
-        
         all_candidate_categories = normal_categories + alternative_categories
         
-        if not all_candidate_categories or number_of_categories < 1:
+        if not all_candidate_categories:  # no categories chosen at all, just use all categories
             all_candidate_categories = list(all_categories.keys())
             normal_categories = list(get_normal_categories().keys())
             alternative_categories = list(get_alt_categories().keys())
-            number_of_categories = 16
-                
-        weights = [weight_normal] * len(normal_categories) + [weight_alt] * len(alternative_categories)
-        for i, cat in enumerate(all_candidate_categories):
-            if cat in self.options.allowed_starting_categories.value:
-                weights[i] *= 1000000
-
-        starting_categories_1 = 0
-        self.possible_categories = []
-        for _ in range(number_of_categories):
-            ind = self.random.choices(range(len(weights)), weights=weights)[0]
-            # Pop from weights and all_candidate_categories before appending
-            self.possible_categories.append(all_candidate_categories.pop(ind))
-            if weights[ind] > 1000:
-                starting_categories_1 += 1
-                if starting_categories_1 == self.options.number_of_starting_categories.value:
-                    for i in range(len(weights)):
-                        if weights[i] > 1000:
-                            weights[i] /= 1000000
-            weights.pop(ind)
         
-        number_added = 0
+        number_of_categories = min(len(normal_categories) + len(alternative_categories), self.options.total_number_of_categories.value)
         number_of_starting_categories = self.options.number_of_starting_categories.value
+        
+        weight_normal = 100 - self.options.percentage_alternative_categories.value + 0.000000001
+        weight_alt = self.options.percentage_alternative_categories.value + 0.000000001
+            
+        weights = [weight_normal] * len(normal_categories) + [weight_alt] * len(alternative_categories)
+        # first entry for regular weights, second for starting category weights  
+        weights = {i: [weights[i], weights[i]] for i in range(len(all_candidate_categories))} 
+        
+        for i, cat in enumerate(all_candidate_categories):
+            if cat not in self.options.allowed_starting_categories.value:
+                weights[i][1] = 0
+
+        adding_starting_categories = 1
+        enabled_categories = []
         starting_categories = []
-        
-        for cat in self.possible_categories:
-            if cat in self.options.allowed_starting_categories.value:
-                starting_categories.append(cat)
-                number_added += 1
-                if number_added == number_of_starting_categories:
-                    break
-        
-        if number_added < number_of_starting_categories:
-            self.random.shuffle(self.possible_categories)
-            for cat in self.possible_categories:
-                if cat not in starting_categories:
-                    self.precollected.append(cat)
-                    number_added += 1
-                    if number_added == number_of_starting_categories:
-                        break
-        
-        
-        self.cat_indices = [find_category_index(c) for c in self.possible_categories]
-        self.possible_categories = [cat for _, cat in sorted(zip(self.cat_indices, self.possible_categories))]
-        self.cat_indices = [find_category_index(c) for c in self.possible_categories]
+        for _ in range(number_of_categories):
+            if adding_starting_categories:
+                if sum([weights[i][1] for i in weights.keys()]) == 0:
+                    weights = {i: [weights[i][0], weights[i][0]] for i in weights.keys()}
+
+            if sum([weights[i][adding_starting_categories] for i in weights.keys()]) == 0:
+                break
+            ind = self.random.choices(list(weights.keys()), weights=[weights[i][adding_starting_categories] for i in weights.keys()])[0]
+            # Pop from weights and all_candidate_categories before appending
+            enabled_categories.append(ind)
+            if adding_starting_categories:
+                starting_categories.append(ind)
+            weights.pop(ind)
+
+            if len(starting_categories) == number_of_starting_categories:
+                adding_starting_categories = 0
+
+
+        self.cat_indices = sorted(enabled_categories)
+        self.possible_categories = [all_candidate_categories[i] for i in self.cat_indices]
                 
-        for cat in self.possible_categories:
+        for cat in self.cat_indices:
             if cat in starting_categories:
-                self.precollected.append(cat)
+                self.precollected.append(all_candidate_categories[cat])
             else:
-                self.itempool.append(cat)
+                self.itempool.append(all_candidate_categories[cat])
 
         # Also start with one Roll and one Dice
         self.precollected.append("Dice")
@@ -626,7 +612,7 @@ class YachtDiceWorld(World):
         slot_data["goal_score"] = self.goal_score
         slot_data["last_check_score"] = self.max_score
         slot_data["allowed_categories"] = self.possible_categories
-        slot_data["ap_world_version"] = self.ap_world_version
+        slot_data["ap_world_version"] = self.world_version.as_simple_string()
         slot_data["precollected"] = [item.code for item in self.multiworld.precollected_items[self.player]]
         slot_data["number_of_locations"] = self.number_of_locations
         return slot_data
@@ -652,5 +638,6 @@ class YachtDiceWorld(World):
         return change
     
     def write_spoiler(self, spoiler_handle: TextIO) -> None:
-        spoiler_handle.write(f"\nYacht Dice scores in logic for Player {self.player_name}: {self.scores_in_logic}\n")
-        spoiler_handle.write(f"\nYacht Dice items in pool for Player {self.player_name}: {self.itempool}\n")
+        spoiler_handle.write(f"\nYacht Dice scores in logic for Player {self.player_name}: {self.scores_in_logic}")
+        spoiler_handle.write(f"\nYacht Dice items in pool for Player {self.player_name}: {self.itempool}")
+        spoiler_handle.write(f"\nYacht Dice starting categories for Player {self.player_name}: {self.precollected}")
