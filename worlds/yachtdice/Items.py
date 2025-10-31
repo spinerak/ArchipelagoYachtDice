@@ -10,9 +10,8 @@ class ItemData(typing.NamedTuple):
 
 class YachtDiceItem(Item):
     game: str = "Yacht Dice"
-    
-    
-    
+
+
 # A list of all possible categories.
 all_categories = {
     "Category Ones": (("", 1), 1),
@@ -65,9 +64,11 @@ all_categories = {
 def find_category_index(category):
     return all_categories[category][1]
 
+
 def get_normal_categories():
     return {key: value for key, value in all_categories.items() if isinstance(value[1], int)}
-    
+
+
 def get_alt_categories():
     return {key: value for key, value in all_categories.items() if not isinstance(value[1], int)}
 
@@ -94,7 +95,6 @@ item_table = {
     "1 Point": ItemData(16871244301, ItemClassification.progression_skip_balancing),
     "10 Points": ItemData(16871244302, ItemClassification.progression),
     "100 Points": ItemData(16871244303, ItemClassification.progression | ItemClassification.useful),
-    
     "Key": ItemData(16871244304, ItemClassification.progression_skip_balancing),
 }
 
@@ -103,15 +103,7 @@ for ind, cat in enumerate(all_categories):
 
 # item groups for better hinting
 item_groups = {
-    "Score Multiplier": {
-        "Step Score Multiplier", 
-        "Fixed Score Multiplier"
-    },
+    "Score Multiplier": {"Step Score Multiplier", "Fixed Score Multiplier"},
     "Categories": all_categories,
-    "Points": {
-        "100 Points", 
-        "10 Points", 
-        "1 Point", 
-        "Bonus Point"
-    },
+    "Points": {"100 Points", "10 Points", "1 Point", "Bonus Point"},
 }
