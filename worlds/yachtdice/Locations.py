@@ -35,11 +35,11 @@ def ini_locations(
     function that loads in all locations necessary for the game, so based on options.
     will make sure that goal_score and max_score are included locations
     """
-    scaling = 2  # parameter that determines how many low-score location there are.
+    scaling = 2.2  # parameter that determines how many low-score location there are.
     # need more low-score locations or lower difficulties:
     if dif == 1:
         scaling = 3
-    elif dif == 2:
+    else:
         scaling = 2.3
 
     scores = []
@@ -72,9 +72,10 @@ def ini_locations(
 
     scores += [max_score]
 
-    if "Everything" in include_scores:
+    if "Everything" in include_scores and False:
         include_scores = [str(i) for i in range(1, max_score)]
     else:
+        include_scores = [x for x in include_scores if x != "Everything"]
         include_scores = sorted({int(x) for x in include_scores})[:10]
 
     # Adjust scores to include the values in the "include" list

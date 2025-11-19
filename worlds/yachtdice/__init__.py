@@ -251,6 +251,7 @@ class YachtDiceWorld(World):
             extra_percentage = 0.72
         else:
             raise Exception(f"[Yacht Dice] Unknown MinimizeExtraItems options {self.options.minimize_extra_items}")
+
         extra_locations_needed = max(10, math.ceil(already_items * extra_percentage))
 
         # max score is the value of the last check. Goal score is the score needed to 'finish' the game
