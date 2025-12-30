@@ -77,6 +77,8 @@ class YachtDiceWorld(World):
     location_name_to_id = {name: data.id for name, data in all_locations.items()}
 
     item_name_groups = item_groups
+    
+    apworld_version = "2.3.1"
 
     def _get_yachtdice_data(self):
         return {
@@ -149,8 +151,12 @@ class YachtDiceWorld(World):
         )
 
         # which categories to use?
-        normal_categories = sorted(self.options.allowed_normal_categories.value)
-        alternative_categories = sorted(self.options.allowed_alternative_categories.value)
+        normal_categories = []
+        if self.options.percentage_alternative_categories.value < 100:
+            normal_categories = sorted(self.options.allowed_normal_categories.value)
+        alternative_categories = []
+        if self.options.percentage_alternative_categories.value > 0:
+            sorted(self.options.allowed_alternative_categories.value)
         all_candidate_categories = normal_categories + alternative_categories
 
         if not all_candidate_categories:  # no categories chosen at all, just use all categories
@@ -187,6 +193,7 @@ class YachtDiceWorld(World):
             ind = self.random.choices(
                 list(weights.keys()), weights=[weights[i][adding_starting_categories] for i in weights.keys()]
             )[0]
+            
             # Pop from weights and all_candidate_categories before appending
             enabled_categories.append(ind)
             if adding_starting_categories:
@@ -654,7 +661,7 @@ class YachtDiceWorld(World):
         slot_data["goal_score"] = self.goal_score
         slot_data["last_check_score"] = self.max_score
         slot_data["allowed_categories"] = self.possible_categories
-        slot_data["ap_world_version"] = self.world_version.as_simple_string()
+        slot_data["ap_world_version"] = self.apworld_version
         slot_data["precollected"] = [item.code for item in self.multiworld.precollected_items[self.player]]
         slot_data["number_of_locations"] = self.number_of_locations
         return slot_data
