@@ -78,7 +78,7 @@ class YachtDiceWorld(World):
 
     item_name_groups = item_groups
     
-    apworld_version = "2.3.1"
+    apworld_version = "2.3.2"
 
     def _get_yachtdice_data(self):
         return {
